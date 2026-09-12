@@ -10,6 +10,15 @@ if(APPLE AND NOT CMAKE_OSX_ARCHITECTURES)
     set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE STRING "Universal binary architectures" FORCE)
 endif()
 
+# Statically link the MSVC runtime on Windows so the built plugin doesn't
+# depend on the end user having the Visual C++ Redistributable installed —
+# without this, the DLL fails to load silently and the plugin just doesn't
+# show up in the host's plugin list, which is exactly what happened in beta
+# testing before this was added.
+if(MSVC)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
 add_subdirectory(modules/JUCE)
 
 # ---------------------------------------------------------------------------
