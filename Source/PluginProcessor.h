@@ -62,7 +62,8 @@ private:
     std::atomic<float>* modDepthParam = nullptr;
     std::atomic<float>* modRateParam = nullptr;
     std::atomic<float>* earlyLevelParam = nullptr;
-    std::atomic<float>* mixParam = nullptr;
+    std::atomic<float>* dryLevelParam = nullptr;
+    std::atomic<float>* wetLevelParam = nullptr;
     std::atomic<float>* inputGainParam = nullptr;
     std::atomic<float>* outputGainParam = nullptr;
     std::atomic<float>* bypassParam = nullptr;

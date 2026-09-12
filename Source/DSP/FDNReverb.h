@@ -60,7 +60,8 @@ public:
 
         inputGainSm.setTimeConstant (4.0f);
         outputGainSm.setTimeConstant (4.0f);
-        mixSm.setTimeConstant (4.0f);
+        drySm.setTimeConstant (4.0f);
+        wetSm.setTimeConstant (4.0f);
         widthSm.setTimeConstant (4.0f);
         sizeSm.setTimeConstant (12.0f);
         decaySm.setTimeConstant (12.0f);
@@ -109,7 +110,8 @@ public:
     void setModDepth (float v)     { modDepthSm.setTarget (juce::jlimit (0.0f, 1.0f, v)); }
     void setModRate (float hz)     { modRateSm.setTarget (hz); }
     void setEarlyLevel (float v)   { earlyLevelSm.setTarget (juce::jlimit (0.0f, 1.0f, v)); }
-    void setMix (float v)          { mixSm.setTarget (juce::jlimit (0.0f, 1.0f, v)); }
+    void setDryLevel (float v)     { drySm.setTarget (juce::jlimit (0.0f, 1.0f, v)); }
+    void setWetLevel (float v)     { wetSm.setTarget (juce::jlimit (0.0f, 1.0f, v)); }
     void setInputGainDb (float db) { inputGainSm.setTarget (dbToGain (db)); }
     void setOutputGainDb (float db){ outputGainSm.setTarget (dbToGain (db)); }
     void setBypass (bool b)        { bypassed = b; }
@@ -174,7 +176,8 @@ public:
         {
             auto inGain = inputGainSm.tick();
             auto outGain = outputGainSm.tick();
-            auto mixV = mixSm.tick();
+            auto dryV = drySm.tick();
+            auto wetV = wetSm.tick();
             auto widthV = widthSm.tick();
 
             auto dryL = left[n];
@@ -231,8 +234,8 @@ public:
             wetL *= modeFadeV;
             wetR *= modeFadeV;
 
-            auto outL = (dryL * (1.0f - mixV) + wetL * mixV) * outGain;
-            auto outR = (dryR * (1.0f - mixV) + wetR * mixV) * outGain;
+            auto outL = (dryL * dryV + wetL * wetV) * outGain;
+            auto outR = (dryR * dryV + wetR * wetV) * outGain;
 
             outL = smoothClamp (outL);
             outR = smoothClamp (outR);
@@ -298,7 +301,7 @@ private:
     EarlyReflections earlyRefl;
     FDNTank tank;
 
-    BlockSmoother inputGainSm, outputGainSm, mixSm, widthSm;
+    BlockSmoother inputGainSm, outputGainSm, drySm, wetSm, widthSm;
     BlockSmoother sizeSm, decaySm, preDelaySm, diffusionSm, dampingSm;
     BlockSmoother lowCutSm, highCutSm, modDepthSm, modRateSm, earlyLevelSm;
     BlockSmoother modeFadeSm;

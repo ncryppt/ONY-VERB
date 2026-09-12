@@ -22,7 +22,8 @@ namespace ParamIDs
     static constexpr auto modDepth      = "modDepth";
     static constexpr auto modRate       = "modRate";
     static constexpr auto earlyLevel    = "earlyLevel";
-    static constexpr auto mix           = "mix";
+    static constexpr auto dryLevel      = "dryLevel";
+    static constexpr auto wetLevel      = "wetLevel";
     static constexpr auto inputGain     = "inputGain";
     static constexpr auto outputGain    = "outputGain";
     static constexpr auto bypass        = "bypass";
@@ -88,8 +89,16 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         juce::ParameterID { ParamIDs::earlyLevel, 1 }, "Early Reflections",
         Range { 0.0f, 1.0f, 0.001f }, 0.35f));
 
+    // Independent Dry/Wet levels rather than a single crossfade — Dry
+    // defaults to unity (full pass-through) so turning Wet up adds reverb
+    // on top instead of also pulling the dry signal down, which matters for
+    // parallel-style routing as much as it does for a plain insert.
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { ParamIDs::mix, 1 }, "Mix",
+        juce::ParameterID { ParamIDs::dryLevel, 1 }, "Dry",
+        Range { 0.0f, 1.0f, 0.001f }, 1.0f));
+
+    params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { ParamIDs::wetLevel, 1 }, "Wet",
         Range { 0.0f, 1.0f, 0.001f }, 0.175f));
 
     params.push_back (std::make_unique<juce::AudioParameterFloat> (

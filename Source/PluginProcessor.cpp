@@ -28,7 +28,8 @@ OnyVerbProcessor::OnyVerbProcessor()
     modDepthParam   = apvts.getRawParameterValue (ParamIDs::modDepth);
     modRateParam    = apvts.getRawParameterValue (ParamIDs::modRate);
     earlyLevelParam = apvts.getRawParameterValue (ParamIDs::earlyLevel);
-    mixParam        = apvts.getRawParameterValue (ParamIDs::mix);
+    dryLevelParam   = apvts.getRawParameterValue (ParamIDs::dryLevel);
+    wetLevelParam   = apvts.getRawParameterValue (ParamIDs::wetLevel);
     inputGainParam  = apvts.getRawParameterValue (ParamIDs::inputGain);
     outputGainParam = apvts.getRawParameterValue (ParamIDs::outputGain);
     bypassParam     = apvts.getRawParameterValue (ParamIDs::bypass);
@@ -67,7 +68,8 @@ void OnyVerbProcessor::updateEngineParameters()
     engine.setModDepth (modDepthParam->load());
     engine.setModRate (modRateParam->load());
     engine.setEarlyLevel (earlyLevelParam->load());
-    engine.setMix (mixParam->load());
+    engine.setDryLevel (dryLevelParam->load());
+    engine.setWetLevel (wetLevelParam->load());
     engine.setInputGainDb (inputGainParam->load());
     engine.setOutputGainDb (outputGainParam->load());
     engine.setBypass (bypassParam->load() > 0.5f);

@@ -72,7 +72,8 @@ public:
             engine.setWidth (1.0f);
             engine.setModDepth (0.6f);
             engine.setModRate (1.2f);
-            engine.setMix (1.0f);
+            engine.setDryLevel (0.0f);
+            engine.setWetLevel (1.0f);
             engine.setEarlyLevel (0.8f);
             engine.setLowCutHz (20.0f);
             engine.setHighCutHz (18000.0f);
@@ -105,7 +106,8 @@ public:
         engine.prepare (kSampleRate, kBlockSize);
         engine.setMode (ReverbMode::ambient);
         engine.setDecayTime (2.0f);
-        engine.setMix (1.0f);
+        engine.setDryLevel (0.0f);
+        engine.setWetLevel (1.0f);
 
         juce::Random rng (7);
         juce::AudioBuffer<float> buffer (2, kBlockSize);
@@ -141,12 +143,13 @@ public:
 
     void runTest() override
     {
-        beginTest ("Size/Decay/Mix/Width jump mid-stream stays smooth");
+        beginTest ("Size/Decay/Dry/Wet/Width jump mid-stream stays smooth");
 
         FDNReverbEngine engine;
         engine.prepare (kSampleRate, kBlockSize);
         engine.setMode (ReverbMode::hall);
-        engine.setMix (0.5f);
+        engine.setDryLevel (0.5f);
+        engine.setWetLevel (0.5f);
         engine.setSize (0.2f);
         engine.setDecayTime (1.0f);
         engine.setWidth (0.5f);
@@ -161,7 +164,8 @@ public:
         // host would on a hard automation edit / preset switch).
         engine.setSize (1.0f);
         engine.setDecayTime (40.0f);
-        engine.setMix (1.0f);
+        engine.setDryLevel (0.0f);
+        engine.setWetLevel (1.0f);
         engine.setWidth (1.0f);
 
         float worst = 0.0f;
@@ -190,7 +194,8 @@ public:
 
         FDNReverbEngine engine;
         engine.prepare (kSampleRate, kBlockSize);
-        engine.setMix (1.0f);
+        engine.setDryLevel (0.0f);
+        engine.setWetLevel (1.0f);
         engine.setDecayTime (3.0f);
 
         juce::Random rng (5);
@@ -221,7 +226,8 @@ public:
         FDNReverbEngine engine;
         engine.prepare (kSampleRate, kBlockSize);
         engine.setMode (ReverbMode::plate);
-        engine.setMix (1.0f);
+        engine.setDryLevel (0.0f);
+        engine.setWetLevel (1.0f);
         engine.setBypass (true);
 
         juce::Random rng (123);

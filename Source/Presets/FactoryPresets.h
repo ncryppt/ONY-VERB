@@ -34,7 +34,7 @@ inline const std::vector<FactoryPreset>& getFactoryPresets()
             P{ ParamIDs::freeze, 0 }, P{ ParamIDs::preDelay, 5.0f }, P{ ParamIDs::diffusion, 0.6f },
             P{ ParamIDs::damping, 0.5f }, P{ ParamIDs::lowCut, 120.0f }, P{ ParamIDs::highCut, 9000.0f },
             P{ ParamIDs::width, 0.8f }, P{ ParamIDs::modDepth, 0.2f }, P{ ParamIDs::modRate, 0.3f },
-            P{ ParamIDs::earlyLevel, 0.6f }, P{ ParamIDs::mix, 0.22f },
+            P{ ParamIDs::earlyLevel, 0.6f }, P{ ParamIDs::dryLevel, 1.0f }, P{ ParamIDs::wetLevel, 0.22f },
             P{ ParamIDs::inputGain, 0.0f }, P{ ParamIDs::outputGain, 0.0f },
         }},
         { "Room - Live Drum Room", {
@@ -42,7 +42,7 @@ inline const std::vector<FactoryPreset>& getFactoryPresets()
             P{ ParamIDs::freeze, 0 }, P{ ParamIDs::preDelay, 8.0f }, P{ ParamIDs::diffusion, 0.7f },
             P{ ParamIDs::damping, 0.35f }, P{ ParamIDs::lowCut, 80.0f }, P{ ParamIDs::highCut, 11000.0f },
             P{ ParamIDs::width, 1.0f }, P{ ParamIDs::modDepth, 0.25f }, P{ ParamIDs::modRate, 0.4f },
-            P{ ParamIDs::earlyLevel, 0.85f }, P{ ParamIDs::mix, 0.3f },
+            P{ ParamIDs::earlyLevel, 0.85f }, P{ ParamIDs::dryLevel, 1.0f }, P{ ParamIDs::wetLevel, 0.3f },
             P{ ParamIDs::inputGain, 0.0f }, P{ ParamIDs::outputGain, 0.0f },
         }},
         { "Hall - Concert Hall", {
@@ -50,7 +50,7 @@ inline const std::vector<FactoryPreset>& getFactoryPresets()
             P{ ParamIDs::freeze, 0 }, P{ ParamIDs::preDelay, 25.0f }, P{ ParamIDs::diffusion, 0.8f },
             P{ ParamIDs::damping, 0.35f }, P{ ParamIDs::lowCut, 40.0f }, P{ ParamIDs::highCut, 13000.0f },
             P{ ParamIDs::width, 1.0f }, P{ ParamIDs::modDepth, 0.3f }, P{ ParamIDs::modRate, 0.25f },
-            P{ ParamIDs::earlyLevel, 0.5f }, P{ ParamIDs::mix, 0.35f },
+            P{ ParamIDs::earlyLevel, 0.5f }, P{ ParamIDs::dryLevel, 1.0f }, P{ ParamIDs::wetLevel, 0.35f },
             P{ ParamIDs::inputGain, 0.0f }, P{ ParamIDs::outputGain, 0.0f },
         }},
         { "Hall - Cathedral", {
@@ -58,7 +58,7 @@ inline const std::vector<FactoryPreset>& getFactoryPresets()
             P{ ParamIDs::freeze, 0 }, P{ ParamIDs::preDelay, 60.0f }, P{ ParamIDs::diffusion, 0.85f },
             P{ ParamIDs::damping, 0.25f }, P{ ParamIDs::lowCut, 30.0f }, P{ ParamIDs::highCut, 10000.0f },
             P{ ParamIDs::width, 1.0f }, P{ ParamIDs::modDepth, 0.35f }, P{ ParamIDs::modRate, 0.2f },
-            P{ ParamIDs::earlyLevel, 0.4f }, P{ ParamIDs::mix, 0.4f },
+            P{ ParamIDs::earlyLevel, 0.4f }, P{ ParamIDs::dryLevel, 1.0f }, P{ ParamIDs::wetLevel, 0.4f },
             P{ ParamIDs::inputGain, 0.0f }, P{ ParamIDs::outputGain, 0.0f },
         }},
         { "Plate - Vintage Plate", {
@@ -66,7 +66,7 @@ inline const std::vector<FactoryPreset>& getFactoryPresets()
             P{ ParamIDs::freeze, 0 }, P{ ParamIDs::preDelay, 0.0f }, P{ ParamIDs::diffusion, 0.85f },
             P{ ParamIDs::damping, 0.3f }, P{ ParamIDs::lowCut, 100.0f }, P{ ParamIDs::highCut, 15000.0f },
             P{ ParamIDs::width, 0.9f }, P{ ParamIDs::modDepth, 0.2f }, P{ ParamIDs::modRate, 0.5f },
-            P{ ParamIDs::earlyLevel, 0.3f }, P{ ParamIDs::mix, 0.28f },
+            P{ ParamIDs::earlyLevel, 0.3f }, P{ ParamIDs::dryLevel, 1.0f }, P{ ParamIDs::wetLevel, 0.28f },
             P{ ParamIDs::inputGain, 0.0f }, P{ ParamIDs::outputGain, 0.0f },
         }},
         { "Plate - Drum Plate", {
@@ -74,7 +74,7 @@ inline const std::vector<FactoryPreset>& getFactoryPresets()
             P{ ParamIDs::freeze, 0 }, P{ ParamIDs::preDelay, 0.0f }, P{ ParamIDs::diffusion, 0.9f },
             P{ ParamIDs::damping, 0.2f }, P{ ParamIDs::lowCut, 150.0f }, P{ ParamIDs::highCut, 16000.0f },
             P{ ParamIDs::width, 0.85f }, P{ ParamIDs::modDepth, 0.15f }, P{ ParamIDs::modRate, 0.6f },
-            P{ ParamIDs::earlyLevel, 0.35f }, P{ ParamIDs::mix, 0.25f },
+            P{ ParamIDs::earlyLevel, 0.35f }, P{ ParamIDs::dryLevel, 1.0f }, P{ ParamIDs::wetLevel, 0.25f },
             P{ ParamIDs::inputGain, 0.0f }, P{ ParamIDs::outputGain, 0.0f },
         }},
         { "Chamber - Warm Chamber", {
@@ -82,7 +82,7 @@ inline const std::vector<FactoryPreset>& getFactoryPresets()
             P{ ParamIDs::freeze, 0 }, P{ ParamIDs::preDelay, 12.0f }, P{ ParamIDs::diffusion, 0.65f },
             P{ ParamIDs::damping, 0.55f }, P{ ParamIDs::lowCut, 90.0f }, P{ ParamIDs::highCut, 8000.0f },
             P{ ParamIDs::width, 0.85f }, P{ ParamIDs::modDepth, 0.3f }, P{ ParamIDs::modRate, 0.35f },
-            P{ ParamIDs::earlyLevel, 0.55f }, P{ ParamIDs::mix, 0.3f },
+            P{ ParamIDs::earlyLevel, 0.55f }, P{ ParamIDs::dryLevel, 1.0f }, P{ ParamIDs::wetLevel, 0.3f },
             P{ ParamIDs::inputGain, 0.0f }, P{ ParamIDs::outputGain, 0.0f },
         }},
         { "Chamber - Vocal Chamber", {
@@ -90,7 +90,7 @@ inline const std::vector<FactoryPreset>& getFactoryPresets()
             P{ ParamIDs::freeze, 0 }, P{ ParamIDs::preDelay, 15.0f }, P{ ParamIDs::diffusion, 0.6f },
             P{ ParamIDs::damping, 0.5f }, P{ ParamIDs::lowCut, 110.0f }, P{ ParamIDs::highCut, 8500.0f },
             P{ ParamIDs::width, 0.8f }, P{ ParamIDs::modDepth, 0.25f }, P{ ParamIDs::modRate, 0.3f },
-            P{ ParamIDs::earlyLevel, 0.5f }, P{ ParamIDs::mix, 0.26f },
+            P{ ParamIDs::earlyLevel, 0.5f }, P{ ParamIDs::dryLevel, 1.0f }, P{ ParamIDs::wetLevel, 0.26f },
             P{ ParamIDs::inputGain, 0.0f }, P{ ParamIDs::outputGain, 0.0f },
         }},
         { "Shimmer - Ethereal Shimmer", {
@@ -98,7 +98,7 @@ inline const std::vector<FactoryPreset>& getFactoryPresets()
             P{ ParamIDs::freeze, 0 }, P{ ParamIDs::preDelay, 30.0f }, P{ ParamIDs::diffusion, 0.75f },
             P{ ParamIDs::damping, 0.2f }, P{ ParamIDs::lowCut, 60.0f }, P{ ParamIDs::highCut, 14000.0f },
             P{ ParamIDs::width, 1.0f }, P{ ParamIDs::modDepth, 0.5f }, P{ ParamIDs::modRate, 0.4f },
-            P{ ParamIDs::earlyLevel, 0.3f }, P{ ParamIDs::mix, 0.45f },
+            P{ ParamIDs::earlyLevel, 0.3f }, P{ ParamIDs::dryLevel, 1.0f }, P{ ParamIDs::wetLevel, 0.45f },
             P{ ParamIDs::inputGain, 0.0f }, P{ ParamIDs::outputGain, 0.0f },
         }},
         { "Shimmer - Ambient Shimmer Pad", {
@@ -106,7 +106,7 @@ inline const std::vector<FactoryPreset>& getFactoryPresets()
             P{ ParamIDs::freeze, 0 }, P{ ParamIDs::preDelay, 50.0f }, P{ ParamIDs::diffusion, 0.8f },
             P{ ParamIDs::damping, 0.15f }, P{ ParamIDs::lowCut, 50.0f }, P{ ParamIDs::highCut, 12000.0f },
             P{ ParamIDs::width, 1.0f }, P{ ParamIDs::modDepth, 0.6f }, P{ ParamIDs::modRate, 0.25f },
-            P{ ParamIDs::earlyLevel, 0.2f }, P{ ParamIDs::mix, 0.5f },
+            P{ ParamIDs::earlyLevel, 0.2f }, P{ ParamIDs::dryLevel, 1.0f }, P{ ParamIDs::wetLevel, 0.5f },
             P{ ParamIDs::inputGain, 0.0f }, P{ ParamIDs::outputGain, 0.0f },
         }},
         { "Ambient - Infinite Wash", {
@@ -114,7 +114,7 @@ inline const std::vector<FactoryPreset>& getFactoryPresets()
             P{ ParamIDs::freeze, 0 }, P{ ParamIDs::preDelay, 40.0f }, P{ ParamIDs::diffusion, 0.9f },
             P{ ParamIDs::damping, 0.1f }, P{ ParamIDs::lowCut, 40.0f }, P{ ParamIDs::highCut, 9000.0f },
             P{ ParamIDs::width, 1.0f }, P{ ParamIDs::modDepth, 0.4f }, P{ ParamIDs::modRate, 0.15f },
-            P{ ParamIDs::earlyLevel, 0.2f }, P{ ParamIDs::mix, 0.55f },
+            P{ ParamIDs::earlyLevel, 0.2f }, P{ ParamIDs::dryLevel, 1.0f }, P{ ParamIDs::wetLevel, 0.55f },
             P{ ParamIDs::inputGain, 0.0f }, P{ ParamIDs::outputGain, 0.0f },
         }},
         { "Ambient - Frozen Texture", {
@@ -122,7 +122,7 @@ inline const std::vector<FactoryPreset>& getFactoryPresets()
             P{ ParamIDs::freeze, 1 }, P{ ParamIDs::preDelay, 20.0f }, P{ ParamIDs::diffusion, 0.9f },
             P{ ParamIDs::damping, 0.05f }, P{ ParamIDs::lowCut, 30.0f }, P{ ParamIDs::highCut, 8000.0f },
             P{ ParamIDs::width, 1.0f }, P{ ParamIDs::modDepth, 0.35f }, P{ ParamIDs::modRate, 0.1f },
-            P{ ParamIDs::earlyLevel, 0.15f }, P{ ParamIDs::mix, 0.6f },
+            P{ ParamIDs::earlyLevel, 0.15f }, P{ ParamIDs::dryLevel, 1.0f }, P{ ParamIDs::wetLevel, 0.6f },
             P{ ParamIDs::inputGain, 0.0f }, P{ ParamIDs::outputGain, 0.0f },
         }},
     };

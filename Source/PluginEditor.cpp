@@ -95,8 +95,8 @@ OnyVerbEditor::OnyVerbEditor (OnyVerbProcessor& p)
     addAndMakeVisible (freezeButton);
     freezeAttachment.sendInitialUpdate();
 
-    buildKnobRow (knobRowFeatured, { { ParamIDs::lowCut, "Low Cut" }, { ParamIDs::mix, "Mix" },
-                                      { ParamIDs::highCut, "High Cut" } }, true);
+    buildKnobRow (knobRowFeatured, { { ParamIDs::lowCut, "Low Cut" }, { ParamIDs::dryLevel, "Dry" },
+                                      { ParamIDs::wetLevel, "Wet" }, { ParamIDs::highCut, "High Cut" } }, true);
 
     buildKnobRow (knobRowA, { { ParamIDs::size, "Size" }, { ParamIDs::preDelay, "Pre-Delay" },
                               { ParamIDs::width, "Width" }, { ParamIDs::earlyLevel, "Early Refl." } });
