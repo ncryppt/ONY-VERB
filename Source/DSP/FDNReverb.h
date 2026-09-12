@@ -160,7 +160,10 @@ public:
 
         auto preDelaySamples = (float) (preDelayV * 0.001 * sampleRate);
 
-        auto diffCoeff = 0.35f + diffusionV * 0.6f;
+        // Floor raised from 0.35 so the tail stays reasonably smeared even
+        // with Character all the way down, instead of leaning on modulation
+        // alone to hide comb-filtering.
+        auto diffCoeff = 0.45f + diffusionV * 0.5f;
         for (auto& chain : inputDiffusers)
             for (auto& stage : chain)
                 stage.setCoefficient (diffCoeff);

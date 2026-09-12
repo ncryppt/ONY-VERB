@@ -77,16 +77,16 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
 
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { ParamIDs::modDepth, 1 }, "Mod Depth",
-        Range { 0.0f, 1.0f, 0.001f }, 0.0f));
+        Range { 0.0f, 1.0f, 0.001f }, 0.3f));
 
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { ParamIDs::modRate, 1 }, "Mod Rate",
-        Range { 0.02f, 5.0f, 0.001f, 0.5f }, 0.02f,
+        Range { 0.02f, 5.0f, 0.001f, 0.5f }, 0.35f,
         juce::AudioParameterFloatAttributes().withLabel ("Hz")));
 
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { ParamIDs::earlyLevel, 1 }, "Early Reflections",
-        Range { 0.0f, 1.0f, 0.001f }, 0.0f));
+        Range { 0.0f, 1.0f, 0.001f }, 0.35f));
 
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { ParamIDs::mix, 1 }, "Mix",
