@@ -28,6 +28,7 @@ public:
         setColour (juce::ComboBox::textColourId, Theme::textPrimary);
         setColour (juce::PopupMenu::backgroundColourId, Theme::panelRaised);
         setColour (juce::PopupMenu::textColourId, Theme::textPrimary);
+        setColour (juce::PopupMenu::headerTextColourId, Theme::textSecondary);
         setColour (juce::PopupMenu::highlightedBackgroundColourId, Theme::accentDim);
         setColour (juce::TextButton::buttonColourId, Theme::panelRaised);
         setColour (juce::TextButton::textColourOffId, Theme::textSecondary);

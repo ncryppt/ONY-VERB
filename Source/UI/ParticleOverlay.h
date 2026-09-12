@@ -47,9 +47,21 @@ public:
         rather than being a separate visual style. */
     void setInsaneMode (bool enabled) { insane = enabled; }
 
+    /** For slower/older machines: fewer particles and a slower tick rate,
+        since paint cost here scales directly with the active particle
+        count — the main CPU driver of this whole overlay. */
+    void setEcoMode (bool enabled)
+    {
+        eco = enabled;
+        auto hz = enabled ? 20 : 45;
+        startTimerHz (hz);
+        frameSeconds = 1.0f / (float) hz;
+    }
+
     void spawnBurst()
     {
         auto count = insane ? 55 : 16;
+        if (eco) count /= 3;
         for (int i = 0; i < count; ++i)
             spawnParticle (true);
     }
@@ -181,12 +193,13 @@ private:
 
     void timerCallback() override
     {
-        constexpr float dt = 1.0f / 45.0f;
+        auto dt = frameSeconds;
         auto liveliness = livelinessSource ? juce::jlimit (0.0f, 1.0f, livelinessSource()) : 0.0f;
 
         // Ambient trickle scales with how energetic the orb currently looks;
         // near silence this simply stops emitting rather than idling.
-        ambientAccumulator += liveliness * (insane ? 9.0f : 2.4f) * dt;
+        auto ambientRate = (insane ? 9.0f : 2.4f) * (eco ? 0.5f : 1.0f);
+        ambientAccumulator += liveliness * ambientRate * dt;
         while (ambientAccumulator >= 1.0f)
         {
             spawnParticle (false);
@@ -237,6 +250,8 @@ private:
     float ambientAccumulator = 0.0f;
     float smokeAccumulator = 0.0f;
     bool insane = false;
+    bool eco = false;
+    float frameSeconds = 1.0f / 45.0f;
     juce::Random rng { 0x9a11e };
     std::function<float()> livelinessSource;
 };

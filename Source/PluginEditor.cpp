@@ -59,6 +59,25 @@ void saveInsaneState (bool enabled)
     file.getParentDirectory().createDirectory();
     file.replaceWithText (enabled ? "1" : "0");
 }
+
+juce::File getEcoStateFile()
+{
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+        .getChildFile ("ONYVA").getChildFile ("ONY Verb").getChildFile ("eco.txt");
+}
+
+bool loadSavedEcoState()
+{
+    auto file = getEcoStateFile();
+    return file.existsAsFile() && file.loadFileAsString().trim() == "1";
+}
+
+void saveEcoState (bool enabled)
+{
+    auto file = getEcoStateFile();
+    file.getParentDirectory().createDirectory();
+    file.replaceWithText (enabled ? "1" : "0");
+}
 }
 
 OnyVerbEditor::OnyVerbEditor (OnyVerbProcessor& p)
@@ -92,6 +111,7 @@ OnyVerbEditor::OnyVerbEditor (OnyVerbProcessor& p)
 
     freezeButton.setButtonText ("Freeze");
     freezeButton.getProperties().set ("pill", true);
+    freezeButton.setClickingTogglesState (true);
     addAndMakeVisible (freezeButton);
     freezeAttachment.sendInitialUpdate();
 
@@ -125,12 +145,13 @@ OnyVerbEditor::OnyVerbEditor (OnyVerbProcessor& p)
     particleOverlay.setLivelinessSource ([this] { return orb.getLiveliness(); });
     orb.onTransient = [this] { particleOverlay.spawnBurst(); };
 
-    insaneModeButton.setButtonText ("Insane");
-    insaneModeButton.setClickingTogglesState (false);
-    insaneModeButton.getProperties().set ("pill", true);
     addAndMakeVisible (insaneModeButton);
     insaneModeButton.onClick = [this] { setInsaneMode (! insaneMode, true); };
     setInsaneMode (loadSavedInsaneState(), false);
+
+    addAndMakeVisible (ecoModeButton);
+    ecoModeButton.onClick = [this] { setEcoMode (! ecoMode, true); };
+    setEcoMode (loadSavedEcoState(), false);
 
     setResizable (true, true);
     setResizeLimits (760, 560, 1600, 1200);
@@ -180,7 +201,11 @@ void OnyVerbEditor::resized()
 
     auto headerRow = b.removeFromTop (headerHeight);
     header.setBounds (headerRow);
-    insaneModeButton.setBounds (headerRow.withSizeKeepingCentre (90, 26));
+
+    auto headerButtons = headerRow.withSizeKeepingCentre (90 + 8 + 84, 26);
+    ecoModeButton.setBounds (headerButtons.removeFromLeft (84));
+    headerButtons.removeFromLeft (8);
+    insaneModeButton.setBounds (headerButtons);
 
     auto presetRow = b.removeFromTop (presetBarHeight);
     themeSwitcher.setBounds (presetRow.removeFromLeft (150).reduced (4, 2));
@@ -269,7 +294,7 @@ void OnyVerbEditor::applyTheme (int index, bool save)
     // (see timerCallback()) rather than being one static palette; every
     // other theme just needs the one-off refresh above.
     if (ui::Theme::acidTripActive)
-        startTimerHz (30);
+        startTimerHz (ecoMode ? 15 : 30);
     else
         stopTimer();
 
@@ -335,6 +360,25 @@ void OnyVerbEditor::setInsaneMode (bool enabled, bool save)
 
     if (save)
         saveInsaneState (enabled);
+}
+
+void OnyVerbEditor::setEcoMode (bool enabled, bool save)
+{
+    ecoMode = enabled;
+    ecoModeButton.setToggleState (enabled, juce::dontSendNotification);
+
+    orb.setEcoMode (enabled);
+    particleOverlay.setEcoMode (enabled);
+    decayCurve.setEcoMode (enabled);
+    correlationMeter.setEcoMode (enabled);
+
+    // Restart the Acid Trip hue-cycle at the right rate if it's the active
+    // theme, rather than waiting for the next theme switch to pick it up.
+    if (ui::Theme::acidTripActive)
+        startTimerHz (enabled ? 15 : 30);
+
+    if (save)
+        saveEcoState (enabled);
 }
 
 void OnyVerbEditor::captureCompareSlot (char slot)

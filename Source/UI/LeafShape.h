@@ -48,4 +48,36 @@ inline juce::Path makeLeafPath (float size)
     return path;
 }
 
+/** A single, rounded leaf — the kind seen on hybrid/EV "eco" badges — rather
+    than the multi-bladed cannabis leaf above. One symmetric pointed-oval
+    blade from a base point (bottom) to a tip (top), centred on the local
+    origin, `size` tall. Pair with makeEcoLeafVeinPath() for the midrib. */
+inline juce::Path makeEcoLeafPath (float size)
+{
+    juce::Path path;
+    juce::Point<float> base (0.0f, size * 0.5f);
+    juce::Point<float> tip (0.0f, -size * 0.5f);
+
+    path.startNewSubPath (base);
+    path.cubicTo (base.x - size * 0.5f, base.y - size * 0.2f,
+                  tip.x - size * 0.34f, tip.y + size * 0.4f,
+                  tip.x, tip.y);
+    path.cubicTo (tip.x + size * 0.34f, tip.y + size * 0.4f,
+                  base.x + size * 0.5f, base.y - size * 0.2f,
+                  base.x, base.y);
+    path.closeSubPath();
+
+    return path;
+}
+
+/** The straight midrib vein down the centre of makeEcoLeafPath(), meant to
+    be stroked on top of the filled leaf in a contrasting colour. */
+inline juce::Path makeEcoLeafVeinPath (float size)
+{
+    juce::Path path;
+    path.startNewSubPath (0.0f, size * 0.42f);
+    path.lineTo (0.0f, -size * 0.4f);
+    return path;
+}
+
 } // namespace onyverb::ui

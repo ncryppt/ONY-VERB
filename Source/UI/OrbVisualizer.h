@@ -31,6 +31,16 @@ public:
         startTimerHz (45);
     }
 
+    /** For slower/older machines: halves the repaint rate rather than
+        stripping visual features, since the timer tick rate is the main
+        CPU cost here. */
+    void setEcoMode (bool enabled)
+    {
+        auto hz = enabled ? 20 : 45;
+        startTimerHz (hz);
+        frameSeconds = 1.0f / (float) hz;
+    }
+
     void paint (juce::Graphics& g) override
     {
         auto bounds = getLocalBounds().toFloat();
@@ -216,11 +226,11 @@ private:
             if (onTransient) onTransient();
             pulseCooldown = 0.12f;
         }
-        pulseCooldown = juce::jmax (0.0f, pulseCooldown - kFrameSeconds);
+        pulseCooldown = juce::jmax (0.0f, pulseCooldown - frameSeconds);
 
         for (auto& age : pulseAges)
             if (age >= 0.0f)
-                age = (age + kFrameSeconds > kPulseLifetime) ? -1.0f : age + kFrameSeconds;
+                age = (age + frameSeconds > kPulseLifetime) ? -1.0f : age + frameSeconds;
 
         idlePhase += 0.06f;
         if (idlePhase > juce::MathConstants<float>::twoPi)
@@ -251,7 +261,7 @@ private:
 
     static constexpr float kPulseLifetime = 0.9f;
     static constexpr float kPulseTriggerDelta = 0.035f;
-    static constexpr float kFrameSeconds = 1.0f / 45.0f;
+    float frameSeconds = 1.0f / 45.0f;
 
     dsp::VisualizationRingBuffer& ringBuffer;
     std::atomic<float>* freezeParam = nullptr;

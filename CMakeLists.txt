@@ -88,6 +88,8 @@ target_sources(ONYVerb PRIVATE
     Source/UI/ThemeSwitcher.h
     Source/UI/ParticleOverlay.h
     Source/UI/LeafShape.h
+    Source/UI/EcoModeButton.h
+    Source/UI/InsaneModeButton.h
 )
 
 target_compile_definitions(ONYVerb PUBLIC

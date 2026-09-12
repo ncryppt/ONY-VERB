@@ -19,10 +19,12 @@ public:
     explicit HeaderBar (juce::AudioProcessorValueTreeState& apvts)
         : bypassAttachment (*apvts.getParameter (ParamIDs::bypass), bypassButton, apvts.undoManager)
     {
-        logoImage = juce::ImageCache::getFromMemory (BinaryData::ONYVA_Logowhite_png, BinaryData::ONYVA_Logowhite_pngSize);
+        logoImageWhite = juce::ImageCache::getFromMemory (BinaryData::ONYVA_Logowhite_png, BinaryData::ONYVA_Logowhite_pngSize);
+        logoImageBlack = juce::ImageCache::getFromMemory (BinaryData::ONYVA_Logoblack_png, BinaryData::ONYVA_Logoblack_pngSize);
 
         bypassButton.setButtonText ("Bypass");
         bypassButton.getProperties().set ("pill", true);
+        bypassButton.setClickingTogglesState (true);
         addAndMakeVisible (bypassButton);
         bypassAttachment.sendInitialUpdate();
 
@@ -47,6 +49,7 @@ public:
 
     void paint (juce::Graphics& g) override
     {
+        auto& logoImage = Theme::currentThemeIsLight ? logoImageBlack : logoImageWhite;
         if (logoImage.isValid())
         {
             auto logoBounds = getLocalBounds().removeFromLeft (logoArea).toFloat().reduced (0, 10.0f);
@@ -88,7 +91,7 @@ private:
     static constexpr int logoArea = 140;
     static constexpr float logoLeftMargin = 28.0f;
 
-    juce::Image logoImage;
+    juce::Image logoImageWhite, logoImageBlack;
     juce::TextButton bypassButton, buttonA, buttonB;
     juce::ButtonParameterAttachment bypassAttachment;
     std::function<void (char)> onCompare;

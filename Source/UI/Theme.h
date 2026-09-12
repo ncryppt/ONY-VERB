@@ -38,6 +38,11 @@ inline bool kushKomaActive = false;
 // psychedelic flourishes on top.
 inline bool acidTripActive = false;
 
+// Set by applyPalette() below. HeaderBar uses this to pick the black logo
+// variant instead of white — the mark would otherwise vanish against a
+// light background.
+inline bool currentThemeIsLight = false;
+
 inline juce::Colour withAlpha (juce::Colour c, float a) { return c.withAlpha (a); }
 
 inline juce::Font titleFont (float size)  { return juce::Font (juce::FontOptions (size, juce::Font::bold)); }
@@ -55,6 +60,7 @@ struct ThemePalette
     juce::Colour background, panel, panelRaised, hairline;
     juce::Colour textPrimary, textSecondary, textDim;
     juce::Colour accent, accentDim, accentGlow, warnAmber;
+    bool isLight = false;
 };
 
 // juce::Colour's uint32 constructor is explicit, which nested aggregate
@@ -63,9 +69,9 @@ struct ThemePalette
 // instead, which direct-initializes fine.
 inline juce::Colour C (juce::uint32 argb) { return juce::Colour (argb); }
 
-inline const std::array<ThemePalette, 8>& getThemePalettes()
+inline const std::array<ThemePalette, 15>& getThemePalettes()
 {
-    static const std::array<ThemePalette, 8> palettes { {
+    static const std::array<ThemePalette, 15> palettes { {
         { "Electric Blue",
           C (0xff0a0a0c), C (0xff121214), C (0xff17171a), C (0xff26262b),
           C (0xfff2f2f4), C (0xff8a8a90), C (0xff55555a),
@@ -105,6 +111,41 @@ inline const std::array<ThemePalette, 8>& getThemePalettes()
           C (0xff0a0710), C (0xff130b1c), C (0xff1a1026), C (0xff33184a),
           C (0xfff8f0ff), C (0xffc9a8e8), C (0xff7a5a94),
           C (0xffff2fd6), C (0xff9c1c94), C (0x80ff2fd6), C (0xffffe93f) },
+
+        { "Daylight",
+          C (0xfff4f5f7), C (0xffe9eaed), C (0xffffffff), C (0xffd5d7db),
+          C (0xff16171a), C (0xff5c5f66), C (0xff8b8e94),
+          C (0xff0a7cff), C (0xff0857b8), C (0x800a7cff), C (0xffc97a00), true },
+
+        { "Ivory",
+          C (0xfff7f2e9), C (0xffefe7d8), C (0xfffffcf5), C (0xffddd0b8),
+          C (0xff2a2116), C (0xff6e6045), C (0xffa0937a),
+          C (0xffc1440e), C (0xff7a2c08), C (0x80c1440e), C (0xffa65d00), true },
+
+        { "Mint Fog",
+          C (0xfff0f7f3), C (0xffe3f0e9), C (0xffffffff), C (0xffcde3d7),
+          C (0xff12241c), C (0xff4f6b5c), C (0xff82998c),
+          C (0xff0e9e6c), C (0xff076b48), C (0x800e9e6c), C (0xffc97a00), true },
+
+        { "Rose Quartz",
+          C (0xfffbf1f3), C (0xfff5e3e7), C (0xfffffbfc), C (0xffe8cdd3),
+          C (0xff2a1418), C (0xff6e4750), C (0xffa17e86),
+          C (0xffd6336c), C (0xff99204c), C (0x80d6336c), C (0xffc97a00), true },
+
+        { "Lilac Mist",
+          C (0xfff5f2fb), C (0xffece5f6), C (0xfffdfbff), C (0xffdcd0ee),
+          C (0xff1e1830), C (0xff5c4f78), C (0xff8d80a8),
+          C (0xff7c4dff), C (0xff5232a8), C (0x807c4dff), C (0xffc97a00), true },
+
+        { "Graphite Light",
+          C (0xfff2f3f4), C (0xffe5e7e9), C (0xffffffff), C (0xffd2d5d8),
+          C (0xff14171a), C (0xff52585e), C (0xff868c92),
+          C (0xff4a5058), C (0xff2e3237), C (0x804a5058), C (0xffc97a00), true },
+
+        { "Kush Koma Light",
+          C (0xfff4f8ea), C (0xffe7f0d8), C (0xfffdfff8), C (0xffd3e2bb),
+          C (0xff1b2410), C (0xff576a41), C (0xff8b9c74),
+          C (0xff5a9c1c), C (0xff3c6e11), C (0x805a9c1c), C (0xffc97a00), true },
     } };
     return palettes;
 }
@@ -114,8 +155,9 @@ inline void applyPalette (const ThemePalette& p)
     background = p.background; panel = p.panel; panelRaised = p.panelRaised; hairline = p.hairline;
     textPrimary = p.textPrimary; textSecondary = p.textSecondary; textDim = p.textDim;
     accent = p.accent; accentDim = p.accentDim; accentGlow = p.accentGlow; warnAmber = p.warnAmber;
-    kushKomaActive = juce::String (p.name) == "Kush Koma";
+    kushKomaActive = juce::String (p.name).startsWith ("Kush Koma");
     acidTripActive = juce::String (p.name) == "Acid Trip";
+    currentThemeIsLight = p.isLight;
 }
 
 // ---------------------------------------------------------------------------

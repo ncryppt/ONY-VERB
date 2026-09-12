@@ -30,6 +30,8 @@ public:
         startTimerHz (30);
     }
 
+    void setEcoMode (bool enabled) { startTimerHz (enabled ? 12 : 30); }
+
     void paint (juce::Graphics& g) override
     {
         auto bounds = getLocalBounds().toFloat().reduced (2.0f);

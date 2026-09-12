@@ -13,6 +13,8 @@
 #include "UI/KnobWithLabel.h"
 #include "UI/ThemeSwitcher.h"
 #include "UI/ParticleOverlay.h"
+#include "UI/EcoModeButton.h"
+#include "UI/InsaneModeButton.h"
 
 namespace onyverb
 {
@@ -39,6 +41,7 @@ private:
     void applyTheme (int index, bool save);
     void setAdvancedVisible (bool visible, bool save);
     void setInsaneMode (bool enabled, bool save);
+    void setEcoMode (bool enabled, bool save);
     void refreshAllThemedComponents();
 
     /** Drives the Acid Trip theme's rainbow hue-cycle — only running while
@@ -67,8 +70,11 @@ private:
     juce::TextButton advancedToggle;
     bool advancedExpanded = true;
 
-    juce::TextButton insaneModeButton;
+    ui::InsaneModeButton insaneModeButton;
     bool insaneMode = false;
+
+    ui::EcoModeButton ecoModeButton;
+    bool ecoMode = false;
 
     juce::OwnedArray<ui::KnobWithLabel> knobRowFeatured; // Mix, Low Cut, High Cut — bigger, above the rest
     juce::OwnedArray<ui::KnobWithLabel> knobRowA;        // Size, Pre-Delay, Width, Early Reflections
