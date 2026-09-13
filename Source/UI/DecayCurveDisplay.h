@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "Theme.h"
 #include "../Parameters.h"
+#include "../DSP/VisualizationData.h"
 #include <array>
 #include <cmath>
 
@@ -11,13 +12,17 @@ namespace onyverb::ui
 
 /** Top-strip display: a frequency-dependent decay-time (T60) curve, the
     same idea as an EQ curve panel but for "how long does each frequency
-    band ring on" rather than gain. Purely a function of the current
-    parameter values (Size/Decay/Damping/Low+High Cut) — no audio data
-    needed — smoothed so parameter changes animate rather than jump. */
+    band ring on" rather than gain. The curve itself is purely a function
+    of the current parameter values (Size/Decay/Damping/Low+High Cut) — no
+    audio data needed — smoothed so parameter changes animate rather than
+    jump. A small Dry/Wet level meter pair lives in the same panel, driven
+    by live audio via the ring buffer, so at a glance you can see both the
+    shape of the tail *and* how much of each path is actually in the mix. */
 class DecayCurveDisplay final : public juce::Component, private juce::Timer
 {
 public:
-    explicit DecayCurveDisplay (juce::AudioProcessorValueTreeState& state) : apvts (state)
+    DecayCurveDisplay (juce::AudioProcessorValueTreeState& state, dsp::VisualizationRingBuffer& ringBufferIn)
+        : apvts (state), ringBuffer (ringBufferIn)
     {
         sizeParam    = apvts.getRawParameterValue (ParamIDs::size);
         decayParam   = apvts.getRawParameterValue (ParamIDs::decayTime);
@@ -42,6 +47,13 @@ public:
         g.drawRoundedRectangle (bounds, Theme::cornerRadius, 1.0f);
 
         auto plot = bounds.reduced (14.0f, 10.0f);
+
+        // Dry/Wet level meters carve a narrow strip off the right edge of
+        // the panel — drawn after the curve/gridlines below so they sit on
+        // top, but their area is reserved here first so the curve doesn't
+        // stretch underneath them.
+        auto meterStrip = plot.removeFromRight (26.0f);
+        plot.removeFromRight (8.0f);
 
         // Faint horizontal gridlines.
         g.setColour (Theme::hairline.withAlpha (0.5f));
@@ -79,10 +91,40 @@ public:
         g.setFont (Theme::labelFont (10.0f));
         g.drawText ("20Hz", (int) plot.getX(), (int) plot.getBottom() + 1, 50, 10, juce::Justification::left);
         g.drawText ("20kHz", (int) plot.getRight() - 50, (int) plot.getBottom() + 1, 50, 10, juce::Justification::right);
+
+        // Dry/Wet level meters — live audio, not parameter-derived like the
+        // curve above, so together they show both the shape of the tail and
+        // how much of each path is actually reaching the output right now.
+        auto drawMeter = [&] (juce::Rectangle<float> barArea, float levelNorm, juce::Colour colour, const char* label)
+        {
+            g.setColour (Theme::hairline);
+            g.fillRoundedRectangle (barArea, 2.0f);
+
+            auto fillHeight = barArea.getHeight() * juce::jlimit (0.0f, 1.0f, levelNorm);
+            g.setColour (colour);
+            g.fillRoundedRectangle (barArea.withTop (barArea.getBottom() - fillHeight), 2.0f);
+
+            g.setColour (Theme::textDim);
+            g.setFont (Theme::labelFont (9.0f));
+            g.drawText (label, (int) barArea.getX() - 2, (int) barArea.getBottom() + 1, (int) barArea.getWidth() + 4, 10, juce::Justification::centred);
+        };
+
+        constexpr float barWidth = 8.0f, barGap = 3.0f;
+        auto meterStartX = meterStrip.getX() + (meterStrip.getWidth() - (barWidth * 2.0f + barGap)) * 0.5f;
+        juce::Rectangle<float> dryBar (meterStartX, meterStrip.getY(), barWidth, meterStrip.getHeight());
+        juce::Rectangle<float> wetBar (meterStartX + barWidth + barGap, meterStrip.getY(), barWidth, meterStrip.getHeight());
+
+        drawMeter (dryBar, meterResponse (smoothedDryLevel), Theme::textSecondary, "D");
+        drawMeter (wetBar, meterResponse (smoothedWetLevel), lineColour, "W");
     }
 
 private:
     static constexpr size_t kNumPoints = 48;
+
+    // Perceptual-ish scaling so a typical program-level RMS reads usefully
+    // on the meter instead of sitting near the bottom — this is a UI nicety,
+    // not a calibrated metering standard.
+    static float meterResponse (float level) { return juce::jlimit (0.0f, 1.0f, std::sqrt (level) * 1.4f); }
 
     static float freqAt (size_t i)
     {
@@ -117,20 +159,23 @@ private:
             targetCurve[i] = juce::jlimit (0.02f, 1.0f, normalised);
         }
 
-        bool changed = false;
         for (size_t i = 0; i < kNumPoints; ++i)
-        {
-            auto prev = smoothedCurve[i];
             smoothedCurve[i] += 0.18f * (targetCurve[i] - smoothedCurve[i]);
-            if (std::abs (smoothedCurve[i] - prev) > 0.0005f)
-                changed = true;
-        }
 
-        if (changed)
-            repaint();
+        // Dry/Wet meters: fast attack, slower release, like a real VU meter
+        // — makes transients visible without the bars flickering on every
+        // tiny fluctuation.
+        static const dsp::VisualizationSnapshot silence {};
+        auto snap = ringBuffer.popLatest (silence);
+        auto approach = [] (float current, float target) { return current + (target > current ? 0.6f : 0.12f) * (target - current); };
+        smoothedDryLevel = approach (smoothedDryLevel, snap.dryLevel);
+        smoothedWetLevel = approach (smoothedWetLevel, snap.wetLevel);
+
+        repaint();
     }
 
     juce::AudioProcessorValueTreeState& apvts;
+    dsp::VisualizationRingBuffer& ringBuffer;
     std::atomic<float>* sizeParam = nullptr;
     std::atomic<float>* decayParam = nullptr;
     std::atomic<float>* dampingParam = nullptr;
@@ -140,6 +185,8 @@ private:
 
     std::array<float, kNumPoints> smoothedCurve;
     std::array<float, kNumPoints> targetCurve {};
+    float smoothedDryLevel = 0.0f;
+    float smoothedWetLevel = 0.0f;
 };
 
 } // namespace onyverb::ui

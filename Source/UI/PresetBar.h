@@ -58,10 +58,13 @@ private:
     {
         combo.clear (juce::dontSendNotification);
 
-        combo.addSectionHeading ("Factory");
         int id = 1;
-        for (auto& preset : getFactoryPresets())
-            combo.addItem (preset.name, id++);
+        if (! getFactoryPresets().empty())
+        {
+            combo.addSectionHeading ("Factory");
+            for (auto& preset : getFactoryPresets())
+                combo.addItem (preset.name, id++);
+        }
         factoryCount = id - 1;
 
         presetFiles = presetsDir.findChildFiles (juce::File::findFiles, false, "*.onyverbpreset");
@@ -69,7 +72,8 @@ private:
 
         if (! presetFiles.isEmpty())
         {
-            combo.addSeparator();
+            if (factoryCount > 0)
+                combo.addSeparator();
             combo.addSectionHeading ("User");
             for (auto& f : presetFiles)
                 combo.addItem (f.getFileNameWithoutExtension(), id++);

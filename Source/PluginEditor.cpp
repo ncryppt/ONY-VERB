@@ -18,6 +18,7 @@ constexpr int knobRowHeight = 92;
 constexpr int correlationWidth = 90;
 constexpr int correlationHeight = 34;
 constexpr int advancedToggleHeight = 24;
+constexpr int footerHeight = 16;
 
 juce::File getAdvancedStateFile()
 {
@@ -86,7 +87,7 @@ OnyVerbEditor::OnyVerbEditor (OnyVerbProcessor& p)
       header (p.apvts),
       presetBar (p.apvts),
       modePills (p.apvts),
-      decayCurve (p.apvts),
+      decayCurve (p.apvts, p.getVisualizationRingBuffer()),
       orb (p.getVisualizationRingBuffer(), p.apvts.getRawParameterValue (ParamIDs::freeze)),
       correlationMeter (p.getVisualizationRingBuffer()),
       diffusionSlider (p.apvts, ParamIDs::diffusion, "Character"),
@@ -128,6 +129,14 @@ OnyVerbEditor::OnyVerbEditor (OnyVerbProcessor& p)
     advancedToggle.getProperties().set ("pill", true);
     addAndMakeVisible (advancedToggle);
     advancedToggle.onClick = [this] { setAdvancedVisible (! advancedExpanded, true); };
+
+    madeWithLoveLabel.setText (juce::String::fromUTF8 ("Made with \xe2\x99\xa5 in Qu" "\xc3\xa9" "bec City"), juce::dontSendNotification);
+    madeWithLoveLabel.setJustificationType (juce::Justification::centred);
+    madeWithLoveLabel.setFont (ui::Theme::labelFont (11.0f));
+    madeWithLoveLabel.setColour (juce::Label::textColourId, ui::Theme::textDim);
+    madeWithLoveLabel.setInterceptsMouseClicks (false, false);
+    addAndMakeVisible (madeWithLoveLabel);
+
     setAdvancedVisible (loadSavedAdvancedState(), false);
 
     header.onCompareRequested ([this] (char slot) { applyCompareSlot (slot); });
@@ -214,6 +223,8 @@ void OnyVerbEditor::resized()
 
     modePills.setBounds (b.removeFromTop (modePillHeight).reduced (12, 3));
     decayCurve.setBounds (b.removeFromTop (decayCurveHeight).reduced (10, 6));
+
+    madeWithLoveLabel.setBounds (b.removeFromBottom (footerHeight));
 
     auto rowsHeight = featuredRowHeight + knobRowHeight + advancedToggleHeight
                      + (advancedExpanded ? knobRowHeight : 0) + diffusionHeight * 2 + sliderGap;
@@ -317,6 +328,7 @@ void OnyVerbEditor::refreshAllThemedComponents()
     for (auto* knob : knobRowFeatured) knob->refreshTheme();
     for (auto* knob : knobRowA) knob->refreshTheme();
     for (auto* knob : knobRowB) knob->refreshTheme();
+    madeWithLoveLabel.setColour (juce::Label::textColourId, ui::Theme::textDim);
 
     sendLookAndFeelChange();
     repaint();
@@ -344,6 +356,7 @@ void OnyVerbEditor::setAdvancedVisible (bool visible, bool save)
 
     advancedToggle.setButtonText ("Advanced");
     advancedToggle.setToggleState (visible, juce::dontSendNotification);
+    madeWithLoveLabel.setVisible (visible);
 
     resized();
     repaint();

@@ -171,6 +171,7 @@ public:
                 stage.setCoefficient (diffCoeff);
 
         double sumOutL2 = 0.0, sumOutR2 = 0.0, sumOutLR = 0.0, sumTail2 = 0.0;
+        double sumDry2 = 0.0, sumWet2 = 0.0;
 
         for (int n = 0; n < numSamples; ++n)
         {
@@ -234,11 +235,13 @@ public:
             wetL *= modeFadeV;
             wetR *= modeFadeV;
 
-            auto outL = (dryL * dryV + wetL * wetV) * outGain;
-            auto outR = (dryR * dryV + wetR * wetV) * outGain;
+            auto dryOutL = dryL * dryV * outGain;
+            auto dryOutR = dryR * dryV * outGain;
+            auto wetOutL = wetL * wetV * outGain;
+            auto wetOutR = wetR * wetV * outGain;
 
-            outL = smoothClamp (outL);
-            outR = smoothClamp (outR);
+            auto outL = smoothClamp (dryOutL + wetOutL);
+            auto outR = smoothClamp (dryOutR + wetOutR);
             left[n] = outL;
             right[n] = outR;
 
@@ -246,6 +249,8 @@ public:
             sumOutR2 += (double) outR * outR;
             sumOutLR += (double) outL * outR;
             sumTail2 += (double) (wetL * wetL + wetR * wetR) * 0.5;
+            sumDry2 += (double) (dryOutL * dryOutL + dryOutR * dryOutR) * 0.5;
+            sumWet2 += (double) (wetOutL * wetOutL + wetOutR * wetOutR) * 0.5;
         }
 
         auto invN = numSamples > 0 ? 1.0 / (double) numSamples : 0.0;
@@ -255,6 +260,8 @@ public:
         lastSnapshot.correlation = juce::jlimit (-1.0f, 1.0f, (float) (sumOutLR / denom));
         lastSnapshot.brightness = juce::jlimit (0.0f, 1.0f,
             (highCutV - 2000.0f) / 16000.0f * (1.0f - dampingV));
+        lastSnapshot.dryLevel = (float) std::sqrt (juce::jmax (0.0, sumDry2 * invN));
+        lastSnapshot.wetLevel = (float) std::sqrt (juce::jmax (0.0, sumWet2 * invN));
     }
 
     const VisualizationSnapshot& getLastSnapshot() const noexcept { return lastSnapshot; }

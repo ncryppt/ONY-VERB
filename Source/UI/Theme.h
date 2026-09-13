@@ -69,9 +69,9 @@ struct ThemePalette
 // instead, which direct-initializes fine.
 inline juce::Colour C (juce::uint32 argb) { return juce::Colour (argb); }
 
-inline const std::array<ThemePalette, 15>& getThemePalettes()
+inline const std::array<ThemePalette, 16>& getThemePalettes()
 {
-    static const std::array<ThemePalette, 15> palettes { {
+    static const std::array<ThemePalette, 16> palettes { {
         { "Electric Blue",
           C (0xff0a0a0c), C (0xff121214), C (0xff17171a), C (0xff26262b),
           C (0xfff2f2f4), C (0xff8a8a90), C (0xff55555a),
@@ -146,6 +146,11 @@ inline const std::array<ThemePalette, 15>& getThemePalettes()
           C (0xfff4f8ea), C (0xffe7f0d8), C (0xfffdfff8), C (0xffd3e2bb),
           C (0xff1b2410), C (0xff576a41), C (0xff8b9c74),
           C (0xff5a9c1c), C (0xff3c6e11), C (0x805a9c1c), C (0xffc97a00), true },
+
+        { "Acid Trip Light",
+          C (0xfff6f0fa), C (0xffece0f5), C (0xfffffbff), C (0xffe0cdf0),
+          C (0xff20112f), C (0xff6e5490), C (0xffa08cc0),
+          C (0xffff2fd6), C (0xff9c1c94), C (0x80ff2fd6), C (0xffc97a00), true },
     } };
     return palettes;
 }
@@ -156,7 +161,7 @@ inline void applyPalette (const ThemePalette& p)
     textPrimary = p.textPrimary; textSecondary = p.textSecondary; textDim = p.textDim;
     accent = p.accent; accentDim = p.accentDim; accentGlow = p.accentGlow; warnAmber = p.warnAmber;
     kushKomaActive = juce::String (p.name).startsWith ("Kush Koma");
-    acidTripActive = juce::String (p.name) == "Acid Trip";
+    acidTripActive = juce::String (p.name).startsWith ("Acid Trip");
     currentThemeIsLight = p.isLight;
 }
 
