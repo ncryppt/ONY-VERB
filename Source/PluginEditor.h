@@ -36,8 +36,6 @@ private:
                         bool emphasized = false);
     void layoutKnobRowCentered (juce::OwnedArray<ui::KnobWithLabel>& row, juce::Rectangle<int> area, int maxSlotWidth = 0);
     void layoutKnobRowAligned (juce::OwnedArray<ui::KnobWithLabel>& row, juce::Rectangle<int> area, int columnWidth);
-    void captureCompareSlot (char slot);
-    void applyCompareSlot (char slot);
     void applyTheme (int index, bool save);
     void setAdvancedVisible (bool visible, bool save);
     void setInsaneMode (bool enabled, bool save);
@@ -81,9 +79,6 @@ private:
     juce::OwnedArray<ui::KnobWithLabel> knobRowFeatured; // Mix, Low Cut, High Cut — bigger, above the rest
     juce::OwnedArray<ui::KnobWithLabel> knobRowA;        // Size, Pre-Delay, Width, Early Reflections
     juce::OwnedArray<ui::KnobWithLabel> knobRowB;        // Damping, Mod Depth, Mod Rate — the collapsible "Advanced" row
-
-    juce::ValueTree compareSlotA, compareSlotB;
-    char activeCompareSlot = 'A';
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (OnyVerbEditor)
 };

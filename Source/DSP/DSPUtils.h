@@ -208,12 +208,26 @@ class AllpassDiffuser
 public:
     void prepare (double sr, float delayMs)
     {
+        sampleRate = sr;
         delayLine.prepare (sr, delayMs + 1.0f);
         delaySamples = (float) (delayMs * 0.001 * sr);
         delayLine.setBaseDelaySamples (delaySamples);
     }
 
     void reset() { delayLine.reset(); }
+
+    /** Changes the delay time within the already-allocated buffer — unlike
+        prepare(), this never reallocates, so it's safe to call from
+        applyMode() while audio is running (mode switches used to call
+        prepare() again here, which reallocated the buffer on the audio
+        thread — a real-time-safety violation that could cause a dropout/
+        glitch right at the moment the reverb Mode changed). Silently
+        clamps to whatever the buffer was originally sized for. */
+    void retune (float delayMs)
+    {
+        delaySamples = (float) (delayMs * 0.001 * sampleRate);
+        delayLine.setBaseDelaySamples (delaySamples);
+    }
 
     void setCoefficient (float g) { coeff = juce::jlimit (-0.999f, 0.999f, g); }
 
@@ -229,6 +243,7 @@ public:
 
 private:
     ModulatedDelayLine delayLine;
+    double sampleRate = 44100.0;
     float coeff = 0.5f;
     float delaySamples = 0.0f;
 };

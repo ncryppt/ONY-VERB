@@ -9,10 +9,8 @@
 namespace onyverb::ui
 {
 
-/** Top header: ONYVA logo, Bypass toggle (bound to the real bypass
-    parameter), and A/B compare buttons. A/B swaps the full plugin state
-    between two in-memory snapshots — real compare, not decorative — via
-    the callback the editor supplies. */
+/** Top header: ONYVA logo and Bypass toggle (bound to the real bypass
+    parameter). */
 class HeaderBar final : public juce::Component
 {
 public:
@@ -30,23 +28,7 @@ public:
         bypassButton.setClickingTogglesState (true);
         addAndMakeVisible (bypassButton);
         bypassAttachment.sendInitialUpdate();
-
-        for (auto* b : { &buttonA, &buttonB })
-        {
-            b->getProperties().set ("pill", true);
-            b->setClickingTogglesState (false);
-            addAndMakeVisible (*b);
-        }
-        buttonA.setButtonText ("A");
-        buttonB.setButtonText ("B");
-        buttonA.setToggleState (true, juce::dontSendNotification);
-        buttonA.onClick = [this] { setActiveSlot ('A'); };
-        buttonB.onClick = [this] { setActiveSlot ('B'); };
     }
-
-    /** Called by the editor once construction is complete, so HeaderBar
-        doesn't need to know how state save/restore works. */
-    void onCompareRequested (std::function<void (char slot)> callback) { onCompare = std::move (callback); }
 
     void refreshTheme() { repaint(); }
 
@@ -73,7 +55,7 @@ public:
             if (Theme::kushKomaActive)
             {
                 auto leafSize = targetRect.getHeight() * 0.6f;
-                auto leafCentre = juce::Point<float> (targetRect.getRight() + leafSize * 0.75f, targetRect.getCentreY());
+                auto leafCentre = juce::Point<float> (targetRect.getRight() + leafSize * 0.75f, targetRect.getCentreY() + leafSize * 0.22f);
                 g.setColour (Theme::accent);
                 g.fillPath (makeLeafPath (leafSize), juce::AffineTransform::translation (leafCentre));
             }
@@ -85,28 +67,17 @@ public:
         auto b = getLocalBounds();
         b.removeFromLeft (logoArea + 12);
 
-        auto right = b.removeFromRight (170);
-        buttonB.setBounds (right.removeFromRight (44).reduced (2));
-        buttonA.setBounds (right.removeFromRight (44).reduced (2));
-        right.removeFromRight (8);
+        auto right = b.removeFromRight (90);
         bypassButton.setBounds (right.reduced (2));
     }
 
 private:
-    void setActiveSlot (char slot)
-    {
-        buttonA.setToggleState (slot == 'A', juce::dontSendNotification);
-        buttonB.setToggleState (slot == 'B', juce::dontSendNotification);
-        if (onCompare) onCompare (slot);
-    }
-
     static constexpr int logoArea = 140;
     static constexpr float logoLeftMargin = 28.0f;
 
     juce::Image logoImage;
-    juce::TextButton bypassButton, buttonA, buttonB;
+    juce::TextButton bypassButton;
     juce::ButtonParameterAttachment bypassAttachment;
-    std::function<void (char)> onCompare;
 };
 
 } // namespace onyverb::ui

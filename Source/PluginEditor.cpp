@@ -146,10 +146,6 @@ OnyVerbEditor::OnyVerbEditor (OnyVerbProcessor& p)
 
     setAdvancedVisible (loadSavedAdvancedState(), false);
 
-    header.onCompareRequested ([this] (char slot) { applyCompareSlot (slot); });
-    compareSlotA = p.apvts.copyState();
-    compareSlotB = compareSlotA.createCopy();
-
     themeSwitcher.onThemeChanged = [this] (int index) { applyTheme (index, true); };
     auto savedThemeIndex = ui::Theme::loadSavedThemeIndex();
     themeSwitcher.setSelectedIndex (savedThemeIndex);
@@ -410,27 +406,6 @@ void OnyVerbEditor::setEcoMode (bool enabled, bool save)
 
     if (save)
         saveEcoState (enabled);
-}
-
-void OnyVerbEditor::captureCompareSlot (char slot)
-{
-    auto state = onyProcessor.apvts.copyState();
-    (slot == 'A' ? compareSlotA : compareSlotB) = state;
-}
-
-void OnyVerbEditor::applyCompareSlot (char slot)
-{
-    if (slot == activeCompareSlot)
-        return;
-
-    // Snapshot whichever slot we're leaving before switching, so A/B keeps
-    // both sides live rather than only ever restoring a stale first capture.
-    captureCompareSlot (activeCompareSlot);
-    activeCompareSlot = slot;
-
-    auto& target = (slot == 'A' ? compareSlotA : compareSlotB);
-    if (target.isValid())
-        onyProcessor.apvts.replaceState (target.createCopy());
 }
 
 } // namespace onyverb

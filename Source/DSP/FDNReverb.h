@@ -51,9 +51,13 @@ public:
         for (auto& f : inputHighCut) f.prepare (sampleRate);
         preDelayL.prepare (sampleRate, 520.0f);
         preDelayR.prepare (sampleRate, 520.0f);
+        // Sized for the longest diffusion delay across every mode (ambient's
+        // 26.7ms) plus margin, so applyMode() can retune() within this
+        // buffer on a mode switch instead of reallocating on the audio
+        // thread every time the Mode parameter changes.
         for (auto& chain : inputDiffusers)
             for (auto& stage : chain)
-                stage.prepare (sampleRate, 20.0f);
+                stage.prepare (sampleRate, 30.0f);
 
         earlyRefl.prepare (sampleRate);
         tank.prepare (sampleRate);
@@ -278,7 +282,7 @@ private:
 
         for (int ch = 0; ch < 2; ++ch)
             for (int i = 0; i < 4; ++i)
-                inputDiffusers[(size_t) ch][(size_t) i].prepare (sampleRate, tuning.diffusionDelaysMs[(size_t) i]);
+                inputDiffusers[(size_t) ch][(size_t) i].retune (tuning.diffusionDelaysMs[(size_t) i]);
 
         if (immediate)
         {
