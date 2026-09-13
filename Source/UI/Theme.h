@@ -51,6 +51,73 @@ inline juce::Font labelFont (float size)  { return juce::Font (juce::FontOptions
 constexpr float cornerRadius = 10.0f;
 
 // ---------------------------------------------------------------------------
+// Shared depth cues — panels, pills, and other flat shapes route through
+// these so bevel/shadow treatment stays consistent (and only needs tuning
+// in one place) rather than every component hand-rolling its own. Built
+// entirely from black/white overlays and relative brighter()/darker() calls
+// on the caller's own colour, so the same code reads correctly whether the
+// base colour is a dark theme's near-black panel or a light theme's
+// near-white one.
+// ---------------------------------------------------------------------------
+
+/** Soft shadow cast onto whatever's behind a rounded shape, so it reads as
+    sitting slightly above the surface rather than flush with it. A black
+    shadow at the same strength reads as a dark smudge on a light theme's
+    near-white surfaces (nothing bright to contrast against), so light
+    themes get a noticeably softer version rather than the shadow being
+    tuned per call site. */
+inline void dropShadowForRoundedRect (juce::Graphics& g, juce::Rectangle<float> bounds, float radius, float alpha = 0.28f)
+{
+    auto effectiveAlpha = currentThemeIsLight ? alpha * 0.22f : alpha;
+    juce::Path p;
+    p.addRoundedRectangle (bounds, radius);
+    juce::DropShadow shadow (juce::Colours::black.withAlpha (effectiveAlpha), 6, { 0, 1 });
+    shadow.drawForPath (g, p);
+}
+
+/** Fills a rounded rect with a faint top-lit gradient and strokes its edge
+    with a light-to-dark gradient (light catches the top, shadow pools at
+    the bottom) instead of a single flat fill + hairline — the "raised
+    hardware panel" look. */
+inline void fillBeveledRoundedRect (juce::Graphics& g, juce::Rectangle<float> bounds, float radius, juce::Colour baseColour)
+{
+    juce::ColourGradient surface (baseColour.brighter (0.05f), bounds.getX(), bounds.getY(),
+                                    baseColour.darker (0.05f), bounds.getX(), bounds.getBottom(), false);
+    g.setGradientFill (surface);
+    g.fillRoundedRectangle (bounds, radius);
+
+    juce::Path outline;
+    outline.addRoundedRectangle (bounds, radius);
+    juce::ColourGradient edge (juce::Colours::white.withAlpha (0.22f), bounds.getX(), bounds.getY(),
+                                 juce::Colours::black.withAlpha (0.3f), bounds.getX(), bounds.getBottom(), false);
+    g.setGradientFill (edge);
+    g.strokePath (outline, juce::PathStrokeType (1.2f));
+}
+
+/** The full treatment for a pill-shaped button/toggle: drop shadow, beveled
+    fill (tinted with the accent when toggled on, panelRaised otherwise),
+    and a toggle-state border on top. Centralised here since several custom
+    button classes (and the shared LookAndFeel) were each drawing their own
+    slightly-diverging copy of this. */
+inline void fillBeveledPill (juce::Graphics& g, juce::Rectangle<float> bounds, bool toggled, bool hovered, bool pressed)
+{
+    auto radius = bounds.getHeight() * 0.5f;
+
+    dropShadowForRoundedRect (g, bounds, radius);
+    fillBeveledRoundedRect (g, bounds, radius,
+        toggled ? accent.withAlpha (0.16f) : (hovered ? panelRaised.brighter (0.05f) : panelRaised));
+
+    g.setColour (toggled ? accent : hairline);
+    g.drawRoundedRectangle (bounds, radius, toggled ? 1.4f : 1.0f);
+
+    if (pressed)
+    {
+        g.setColour (juce::Colours::black.withAlpha (0.15f));
+        g.fillRoundedRectangle (bounds, radius);
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Palettes
 // ---------------------------------------------------------------------------
 

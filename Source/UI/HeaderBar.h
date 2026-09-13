@@ -19,8 +19,11 @@ public:
     explicit HeaderBar (juce::AudioProcessorValueTreeState& apvts)
         : bypassAttachment (*apvts.getParameter (ParamIDs::bypass), bypassButton, apvts.undoManager)
     {
-        logoImageWhite = juce::ImageCache::getFromMemory (BinaryData::ONYVA_Logowhite_png, BinaryData::ONYVA_Logowhite_pngSize);
-        logoImageBlack = juce::ImageCache::getFromMemory (BinaryData::ONYVA_Logoblack_png, BinaryData::ONYVA_Logoblack_pngSize);
+        // Only the alpha channel of this image is ever used (as a clip
+        // mask in paint()) — the logo is tinted with the theme's own
+        // accent colour rather than drawn in its original white, so it
+        // reads as branded-to-the-theme rather than just light/dark.
+        logoImage = juce::ImageCache::getFromMemory (BinaryData::ONYVA_Logowhite_png, BinaryData::ONYVA_Logowhite_pngSize);
 
         bypassButton.setButtonText ("Bypass");
         bypassButton.getProperties().set ("pill", true);
@@ -49,14 +52,23 @@ public:
 
     void paint (juce::Graphics& g) override
     {
-        auto& logoImage = Theme::currentThemeIsLight ? logoImageBlack : logoImageWhite;
         if (logoImage.isValid())
         {
             auto logoBounds = getLocalBounds().removeFromLeft (logoArea).toFloat().reduced (0, 10.0f);
             logoBounds.removeFromLeft (logoLeftMargin); // keep the mark off the window edge
             juce::RectanglePlacement placement (juce::RectanglePlacement::xLeft | juce::RectanglePlacement::yMid);
             auto targetRect = logoBounds.withWidth (juce::jmin (logoBounds.getWidth(), logoBounds.getHeight() * (float) logoImage.getWidth() / (float) logoImage.getHeight()));
-            g.drawImage (logoImage, targetRect, placement);
+
+            // Clip to the logo's shape (its alpha channel) and fill with
+            // the theme's accent instead of drawing the image's own
+            // colour — this is what makes the mark tint to match whatever
+            // theme is active, including tracking Acid Trip's live hue-cycle.
+            auto transform = placement.getTransformToFit (logoImage.getBounds().toFloat(), targetRect);
+            g.saveState();
+            g.reduceClipRegion (logoImage, transform);
+            g.setColour (Theme::accent);
+            g.fillRect (targetRect);
+            g.restoreState();
 
             if (Theme::kushKomaActive)
             {
@@ -91,7 +103,7 @@ private:
     static constexpr int logoArea = 140;
     static constexpr float logoLeftMargin = 28.0f;
 
-    juce::Image logoImageWhite, logoImageBlack;
+    juce::Image logoImage;
     juce::TextButton bypassButton, buttonA, buttonB;
     juce::ButtonParameterAttachment bypassAttachment;
     std::function<void (char)> onCompare;

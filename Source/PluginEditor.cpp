@@ -18,7 +18,7 @@ constexpr int knobRowHeight = 92;
 constexpr int correlationWidth = 90;
 constexpr int correlationHeight = 34;
 constexpr int advancedToggleHeight = 24;
-constexpr int footerHeight = 16;
+constexpr int footerHeight = 30;
 
 juce::File getAdvancedStateFile()
 {
@@ -137,6 +137,13 @@ OnyVerbEditor::OnyVerbEditor (OnyVerbProcessor& p)
     madeWithLoveLabel.setInterceptsMouseClicks (false, false);
     addAndMakeVisible (madeWithLoveLabel);
 
+    developedByLabel.setText ("Developed by On Y Va Records", juce::dontSendNotification);
+    developedByLabel.setJustificationType (juce::Justification::centred);
+    developedByLabel.setFont (ui::Theme::labelFont (11.0f));
+    developedByLabel.setColour (juce::Label::textColourId, ui::Theme::textDim);
+    developedByLabel.setInterceptsMouseClicks (false, false);
+    addAndMakeVisible (developedByLabel);
+
     setAdvancedVisible (loadSavedAdvancedState(), false);
 
     header.onCompareRequested ([this] (char slot) { applyCompareSlot (slot); });
@@ -164,7 +171,7 @@ OnyVerbEditor::OnyVerbEditor (OnyVerbProcessor& p)
 
     setResizable (true, true);
     setResizeLimits (760, 560, 1600, 1200);
-    setSize (960, 720);
+    setSize (960, 920);
 }
 
 OnyVerbEditor::~OnyVerbEditor()
@@ -224,7 +231,9 @@ void OnyVerbEditor::resized()
     modePills.setBounds (b.removeFromTop (modePillHeight).reduced (12, 3));
     decayCurve.setBounds (b.removeFromTop (decayCurveHeight).reduced (10, 6));
 
-    madeWithLoveLabel.setBounds (b.removeFromBottom (footerHeight));
+    auto footerArea = b.removeFromBottom (footerHeight);
+    madeWithLoveLabel.setBounds (footerArea.removeFromTop (footerHeight / 2));
+    developedByLabel.setBounds (footerArea);
 
     auto rowsHeight = featuredRowHeight + knobRowHeight + advancedToggleHeight
                      + (advancedExpanded ? knobRowHeight : 0) + diffusionHeight * 2 + sliderGap;
@@ -237,11 +246,18 @@ void OnyVerbEditor::resized()
     inputFader.setBounds (leftRail.reduced (6));
     outputFader.setBounds (rightRail.reduced (6));
 
+    // The knob rows below are fixed-pixel heights that don't scale with the
+    // window, so on a small enough window (or with Advanced toggled open at
+    // a size that was fine collapsed) rowsHeight can exceed what's left of
+    // mainArea — clamping it here guarantees the orb keeps at least
+    // minOrbHeight rather than being squeezed down to nothing.
+    constexpr int minOrbHeight = 90;
     auto centreArea = mainArea;
-    auto knobsArea = centreArea.removeFromBottom (rowsHeight);
+    auto knobsHeight = juce::jmin (rowsHeight, juce::jmax (0, centreArea.getHeight() - minOrbHeight));
+    auto knobsArea = centreArea.removeFromBottom (knobsHeight);
 
     auto orbArea = centreArea;
-    auto orbSize = juce::jmin (orbArea.getWidth(), orbArea.getHeight());
+    auto orbSize = juce::jmax (40, juce::jmin (orbArea.getWidth(), orbArea.getHeight()));
     orb.setBounds (orbArea.withSizeKeepingCentre (orbSize, orbSize));
     particleOverlay.setOrbGeometry (orb.getBounds().toFloat().getCentre(), (float) orbSize * 0.5f * 0.6f);
 
@@ -329,6 +345,7 @@ void OnyVerbEditor::refreshAllThemedComponents()
     for (auto* knob : knobRowA) knob->refreshTheme();
     for (auto* knob : knobRowB) knob->refreshTheme();
     madeWithLoveLabel.setColour (juce::Label::textColourId, ui::Theme::textDim);
+    developedByLabel.setColour (juce::Label::textColourId, ui::Theme::textDim);
 
     sendLookAndFeelChange();
     repaint();
@@ -357,6 +374,7 @@ void OnyVerbEditor::setAdvancedVisible (bool visible, bool save)
     advancedToggle.setButtonText ("Advanced");
     advancedToggle.setToggleState (visible, juce::dontSendNotification);
     madeWithLoveLabel.setVisible (visible);
+    developedByLabel.setVisible (visible);
 
     resized();
     repaint();

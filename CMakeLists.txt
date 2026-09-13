@@ -39,7 +39,6 @@ endif()
 
 juce_add_binary_data(ONYVerbBinaryData SOURCES
     Resources/ONYVA_Logo-white.png
-    Resources/ONYVA_Logo-black.png
 )
 
 juce_add_plugin(ONYVerb

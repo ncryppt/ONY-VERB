@@ -41,10 +41,8 @@ public:
     {
         auto bounds = getLocalBounds().toFloat().reduced (2.0f);
 
-        g.setColour (Theme::panel);
-        g.fillRoundedRectangle (bounds, Theme::cornerRadius);
-        g.setColour (Theme::hairline);
-        g.drawRoundedRectangle (bounds, Theme::cornerRadius, 1.0f);
+        Theme::dropShadowForRoundedRect (g, bounds, Theme::cornerRadius);
+        Theme::fillBeveledRoundedRect (g, bounds, Theme::cornerRadius, Theme::panel);
 
         auto plot = bounds.reduced (14.0f, 10.0f);
 

@@ -20,28 +20,8 @@ public:
     void paintButton (juce::Graphics& g, bool isMouseOverButton, bool isButtonDown) override
     {
         auto bounds = getLocalBounds().toFloat().reduced (1.0f);
-        auto radius = bounds.getHeight() * 0.5f;
 
-        if (getToggleState())
-        {
-            g.setColour (Theme::accent.withAlpha (0.16f));
-            g.fillRoundedRectangle (bounds, radius);
-            g.setColour (Theme::accent);
-            g.drawRoundedRectangle (bounds, radius, 1.4f);
-        }
-        else
-        {
-            g.setColour (isMouseOverButton ? Theme::panelRaised.brighter (0.05f) : Theme::panelRaised);
-            g.fillRoundedRectangle (bounds, radius);
-            g.setColour (Theme::hairline);
-            g.drawRoundedRectangle (bounds, radius, 1.0f);
-        }
-
-        if (isButtonDown)
-        {
-            g.setColour (juce::Colours::black.withAlpha (0.15f));
-            g.fillRoundedRectangle (bounds, radius);
-        }
+        Theme::fillBeveledPill (g, bounds, getToggleState(), isMouseOverButton, isButtonDown);
 
         auto contentColour = getToggleState() ? Theme::accent : Theme::textSecondary;
         auto leafSize = bounds.getHeight() * 0.6f;

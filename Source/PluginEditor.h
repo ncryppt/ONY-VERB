@@ -70,6 +70,7 @@ private:
     juce::TextButton advancedToggle;
     bool advancedExpanded = true;
     juce::Label madeWithLoveLabel;
+    juce::Label developedByLabel;
 
     ui::InsaneModeButton insaneModeButton;
     bool insaneMode = false;

@@ -109,19 +109,25 @@ public:
     {
         auto bounds = button.getLocalBounds().toFloat().reduced (1.0f);
         auto isPill = button.getProperties().contains ("pill");
-        auto radius = isPill ? bounds.getHeight() * 0.5f : Theme::cornerRadius;
+
+        if (isPill)
+        {
+            Theme::fillBeveledPill (g, bounds, button.getToggleState(), isMouseOverButton, isButtonDown);
+            return;
+        }
+
+        auto radius = Theme::cornerRadius;
+        Theme::dropShadowForRoundedRect (g, bounds, radius);
 
         if (button.getToggleState())
         {
-            g.setColour (Theme::accent.withAlpha (0.16f));
-            g.fillRoundedRectangle (bounds, radius);
+            Theme::fillBeveledRoundedRect (g, bounds, radius, Theme::accent.withAlpha (0.16f));
             g.setColour (Theme::accent);
             g.drawRoundedRectangle (bounds, radius, 1.4f);
         }
         else
         {
-            g.setColour (isMouseOverButton ? Theme::panelRaised.brighter (0.05f) : Theme::panelRaised);
-            g.fillRoundedRectangle (bounds, radius);
+            Theme::fillBeveledRoundedRect (g, bounds, radius, isMouseOverButton ? Theme::panelRaised.brighter (0.05f) : Theme::panelRaised);
             g.setColour (Theme::hairline);
             g.drawRoundedRectangle (bounds, radius, 1.0f);
         }

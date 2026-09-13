@@ -24,10 +24,8 @@ public:
     {
         auto bounds = getLocalBounds().toFloat();
 
-        g.setColour (Theme::panel);
-        g.fillRoundedRectangle (bounds, 6.0f);
-        g.setColour (Theme::hairline);
-        g.drawRoundedRectangle (bounds, 6.0f, 1.0f);
+        Theme::dropShadowForRoundedRect (g, bounds, 6.0f, 0.22f);
+        Theme::fillBeveledRoundedRect (g, bounds, 6.0f, Theme::panel);
 
         auto track = bounds.reduced (6.0f, bounds.getHeight() * 0.5f - 2.0f);
         g.setColour (Theme::hairline);
