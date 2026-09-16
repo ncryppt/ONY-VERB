@@ -22,7 +22,7 @@ constexpr int footerHeight = 44;
 
 // Matches the current GitHub release tag — bump this by hand alongside each
 // release until this is wired up to the actual build/CI version.
-constexpr const char* versionString = "v0.0.6";
+constexpr const char* versionString = "v0.0.7";
 
 juce::File getAdvancedStateFile()
 {
