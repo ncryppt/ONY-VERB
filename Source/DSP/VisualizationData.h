@@ -2,6 +2,7 @@
 
 #include <juce_core/juce_core.h>
 #include <atomic>
+#include <cmath>
 
 namespace onyverb::dsp
 {
@@ -18,6 +19,25 @@ struct VisualizationSnapshot
     float dryLevel = 0.0f;      // RMS of the dry path's contribution to the output (post Dry knob + output gain)
     float wetLevel = 0.0f;      // RMS of the wet path's contribution to the output (post Wet knob + output gain)
 };
+
+/** True for any value a real block-rate RMS/correlation snapshot could
+    plausibly hold. Used to reject a torn read (see popLatest() below) or a
+    genuine but invalid upstream value before it reaches the UI — a NaN or
+    huge number here has visibly "exploded" the orb (garbage radius/colour
+    math) and triggered a spurious particle burst (read as a huge transient
+    jump) on at least one machine, so every field is checked rather than
+    just the ones a given caller happens to use. */
+inline bool isPlausibleSnapshot (const VisualizationSnapshot& s) noexcept
+{
+    auto finite = [] (float v) { return std::isfinite (v); };
+    return finite (s.outputLevel) && finite (s.tailEnergy) && finite (s.brightness)
+        && finite (s.correlation) && finite (s.dryLevel) && finite (s.wetLevel)
+        && s.outputLevel >= 0.0f && s.outputLevel < 1000.0f
+        && s.tailEnergy  >= 0.0f && s.tailEnergy  < 1000.0f
+        && s.dryLevel    >= 0.0f && s.dryLevel    < 1000.0f
+        && s.wetLevel    >= 0.0f && s.wetLevel    < 1000.0f
+        && s.correlation >= -1.5f && s.correlation <= 1.5f;
+}
 
 /** Single-writer (audio thread), multi-reader (any number of independent UI
     timers) publisher of the latest snapshot. A plain FIFO only supports one
@@ -52,8 +72,11 @@ public:
 
             VisualizationSnapshot snap = latest;
             auto seq2 = sequence.load (std::memory_order_acquire);
-            if (seq1 == seq2)
-                return seq1 == 0 ? fallback : snap;
+            if (seq1 != seq2) continue; // torn read (write landed mid-copy), retry
+
+            if (seq1 == 0) return fallback;
+            if (! isPlausibleSnapshot (snap)) continue; // still garbage despite matching sequence numbers — retry rather than show it
+            return snap;
         }
         return fallback;
     }

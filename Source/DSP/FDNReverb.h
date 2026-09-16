@@ -244,8 +244,8 @@ public:
             auto wetOutL = wetL * wetV * outGain;
             auto wetOutR = wetR * wetV * outGain;
 
-            auto outL = smoothClamp (dryOutL + wetOutL);
-            auto outR = smoothClamp (dryOutR + wetOutR);
+            auto outL = sanitize (smoothClamp (dryOutL + wetOutL));
+            auto outR = sanitize (smoothClamp (dryOutR + wetOutR));
             left[n] = outL;
             right[n] = outR;
 

@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "Theme.h"
+#include "ParticleOverlay.h"
 
 namespace onyverb::ui
 {
@@ -54,6 +55,8 @@ public:
         valueLabel.setColour (juce::Label::textColourId, Theme::accent);
         repaint();
     }
+
+    void wireParticles (ParticleOverlay& overlay) { wireDragTrickle (slider, overlay); }
 
 private:
     void updateValueLabel()
@@ -111,6 +114,8 @@ public:
         repaint();
     }
 
+    void wireParticles (ParticleOverlay& overlay) { wireDragTrickle (slider, overlay); }
+
 private:
     void updateValueLabel()
     {
@@ -166,6 +171,8 @@ public:
         valueLabel.setColour (juce::Label::textColourId, Theme::accent);
         repaint();
     }
+
+    void wireParticles (ParticleOverlay& overlay) { wireDragTrickle (slider, overlay); }
 
 private:
     juce::Slider slider;

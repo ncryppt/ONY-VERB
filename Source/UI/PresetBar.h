@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "Theme.h"
 #include "../Presets/FactoryPresets.h"
+#include <functional>
 
 namespace onyverb::ui
 {
@@ -53,17 +54,37 @@ public:
         combo.setBounds (b.reduced (4, 2));
     }
 
+    /** Lets the editor wire shared click-feedback (particle bursts) onto
+        every button here without this class needing to know anything about
+        that — the theme switcher's combo box isn't included since it isn't
+        a Button. */
+    void forEachButton (const std::function<void (juce::Button&)>& fn)
+    {
+        for (auto* b : { &prevButton, &nextButton, &saveButton, &loadButton })
+            fn (*b);
+    }
+
 private:
     void refreshPresetList()
     {
         combo.clear (juce::dontSendNotification);
 
+        // Presets are grouped into a heading per pack (an artist series, or
+        // just "Factory") — assumes presets sharing a pack already sit
+        // consecutively in getFactoryPresets(), so a heading only needs to
+        // start whenever the pack name actually changes.
         int id = 1;
-        if (! getFactoryPresets().empty())
+        const char* currentPack = nullptr;
+        for (auto& preset : getFactoryPresets())
         {
-            combo.addSectionHeading ("Factory");
-            for (auto& preset : getFactoryPresets())
-                combo.addItem (preset.name, id++);
+            if (currentPack == nullptr || juce::String (currentPack) != juce::String (preset.pack))
+            {
+                if (currentPack != nullptr)
+                    combo.addSeparator();
+                combo.addSectionHeading (preset.pack);
+                currentPack = preset.pack;
+            }
+            combo.addItem (preset.name, id++);
         }
         factoryCount = id - 1;
 

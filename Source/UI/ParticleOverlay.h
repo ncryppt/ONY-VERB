@@ -63,7 +63,43 @@ public:
         auto count = insane ? 55 : 16;
         if (eco) count /= 3;
         for (int i = 0; i < count; ++i)
-            spawnParticle (true);
+            spawnParticle (true, orbCentre, orbRadius);
+    }
+
+    /** A small, quick particle pop at an arbitrary point in this overlay's
+        own coordinate space — used for click feedback on any button in the
+        plugin, not just the orb's own transient bursts. Uses a much smaller
+        spawn radius than the orb since a button click is a point, not an
+        area to spread particles across. */
+    void spawnBurstAt (juce::Point<float> origin)
+    {
+        auto count = insane ? 14 : 8;
+        if (eco) count /= 2;
+        for (int i = 0; i < count; ++i)
+            spawnParticle (true, origin, 4.0f);
+    }
+
+    /** Starts a light, continuous particle trickle from `source`'s own
+        centre position for as long as it's being dragged — the "moving"
+        counterpart to spawnBurstAt()'s single click pop. Position is read
+        fresh every tick (via `source`) rather than captured once, so it
+        follows the control if it's ever moved/resized mid-drag. Safe to
+        call again for a `source` already dragging (a no-op) or when the
+        emitter pool is full (drag just goes quiet, nothing else breaks). */
+    void beginDragTrickle (juce::Component* source)
+    {
+        for (auto& d : dragSources)
+        {
+            if (d.component == source) return;
+            if (d.component == nullptr) { d = { source, 0.0f }; return; }
+        }
+    }
+
+    void endDragTrickle (juce::Component* source)
+    {
+        for (auto& d : dragSources)
+            if (d.component == source)
+                d = {};
     }
 
     void paint (juce::Graphics& g) override
@@ -126,7 +162,16 @@ private:
         bool active = false;
     };
 
-    void spawnParticle (bool burst)
+    /** One knob/slider currently being dragged; nullptr component = unused
+        slot. Position is read from the component itself each tick rather
+        than stored, so the trickle keeps following it. */
+    struct DragSource
+    {
+        juce::Component* component = nullptr;
+        float accumulator = 0.0f;
+    };
+
+    void spawnParticle (bool burst, juce::Point<float> origin, float radius)
     {
         for (auto& p : particles)
         {
@@ -138,9 +183,9 @@ private:
             auto angle = rng.nextFloat() * juce::MathConstants<float>::twoPi;
             juce::Point<float> direction (std::cos (angle), std::sin (angle));
             auto speed = (burst ? (150.0f + rng.nextFloat() * 190.0f) : (25.0f + rng.nextFloat() * 55.0f)) * speedMul;
-            auto startRadius = orbRadius * (0.55f + rng.nextFloat() * 0.5f);
+            auto startRadius = radius * (0.55f + rng.nextFloat() * 0.5f);
 
-            p.pos = orbCentre + direction * startRadius;
+            p.pos = origin + direction * startRadius;
             p.velocity = direction * speed;
             p.age = 0.0f;
             p.life = burst ? (1.0f + rng.nextFloat() * 0.7f) : (1.6f + rng.nextFloat() * 1.6f);
@@ -202,8 +247,23 @@ private:
         ambientAccumulator += liveliness * ambientRate * dt;
         while (ambientAccumulator >= 1.0f)
         {
-            spawnParticle (false);
+            spawnParticle (false, orbCentre, orbRadius);
             ambientAccumulator -= 1.0f;
+        }
+
+        // Knobs/sliders currently being dragged get their own light trickle,
+        // independent of the orb's liveliness — this is drag feedback, not
+        // an audio-reactive effect.
+        for (auto& d : dragSources)
+        {
+            if (d.component == nullptr) continue;
+            d.accumulator += kDragTrickleRate * dt;
+            while (d.accumulator >= 1.0f)
+            {
+                auto origin = getLocalPoint (d.component, d.component->getLocalBounds().getCentre().toFloat());
+                spawnParticle (false, origin, 4.0f);
+                d.accumulator -= 1.0f;
+            }
         }
 
         // Smoke wafts continuously regardless of loudness — it's decoration
@@ -242,8 +302,11 @@ private:
 
     static constexpr int kMaxParticles = 420; // headroom for Insane Mode's bigger bursts + faster ambient rate
     static constexpr float kLeafTemplateSize = 10.0f;
+    static constexpr int kMaxDragSources = 8;
+    static constexpr float kDragTrickleRate = 10.0f; // particles/sec per control being dragged
 
     std::array<Particle, kMaxParticles> particles;
+    std::array<DragSource, kMaxDragSources> dragSources;
     juce::Path leafTemplate;
     juce::Point<float> orbCentre;
     float orbRadius = 40.0f;
@@ -255,5 +318,46 @@ private:
     juce::Random rng { 0x9a11e };
     std::function<float()> livelinessSource;
 };
+
+/** Wires a small particle pop to fire (from `overlay`, at the button's own
+    screen position) whenever `button` is clicked, without disturbing
+    whatever onClick it already has — Button::onClick is a single
+    std::function, so this wraps rather than replaces it. Used to give
+    every button in the plugin the same click feedback as the orb's own
+    transient bursts. */
+inline void wireClickBurst (juce::Button& button, ParticleOverlay& overlay)
+{
+    auto previousOnClick = button.onClick;
+    button.onClick = [&button, &overlay, previousOnClick]
+    {
+        auto centre = overlay.getLocalPoint (&button, button.getLocalBounds().getCentre().toFloat());
+        overlay.spawnBurstAt (centre);
+        if (previousOnClick)
+            previousOnClick();
+    };
+}
+
+/** Same idea as wireClickBurst(), but for continuous movement: starts a
+    light particle trickle from `slider`'s own position for as long as
+    it's being dragged. Wraps whatever onDragStart/onDragEnd the slider
+    already has rather than replacing them. */
+inline void wireDragTrickle (juce::Slider& slider, ParticleOverlay& overlay)
+{
+    auto previousDragStart = slider.onDragStart;
+    auto previousDragEnd = slider.onDragEnd;
+
+    slider.onDragStart = [&slider, &overlay, previousDragStart]
+    {
+        overlay.beginDragTrickle (&slider);
+        if (previousDragStart)
+            previousDragStart();
+    };
+    slider.onDragEnd = [&slider, &overlay, previousDragEnd]
+    {
+        overlay.endDragTrickle (&slider);
+        if (previousDragEnd)
+            previousDragEnd();
+    };
+}
 
 } // namespace onyverb::ui

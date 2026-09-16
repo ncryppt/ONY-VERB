@@ -285,4 +285,17 @@ inline float smoothClamp (float x)
     return std::tanh (x);
 }
 
+/** Replaces a NaN/Inf with silence. tanh() above saturates any finite
+    value gracefully but — like almost every floating-point operation —
+    passes a NaN straight through unchanged, so a NaN that reaches this
+    engine from anywhere keeps propagating (and, fed back into a tank
+    line, recirculates indefinitely) rather than being caught by the
+    soft-limiter. Applied at the two points a bad value could start
+    recirculating or reach the output: the tank's own feedback injection
+    and the engine's final output samples. */
+inline float sanitize (float x) noexcept
+{
+    return std::isfinite (x) ? x : 0.0f;
+}
+
 } // namespace onyverb::dsp

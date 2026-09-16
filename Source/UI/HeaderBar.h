@@ -5,6 +5,7 @@
 #include "LeafShape.h"
 #include "../Parameters.h"
 #include "BinaryData.h"
+#include <functional>
 
 namespace onyverb::ui
 {
@@ -66,10 +67,15 @@ public:
     {
         auto b = getLocalBounds();
         b.removeFromLeft (logoArea + 12);
+        b.removeFromRight (10); // keep Bypass off the window edge
 
         auto right = b.removeFromRight (90);
         bypassButton.setBounds (right.reduced (2));
     }
+
+    /** Lets the editor wire shared click-feedback (particle bursts) onto
+        Bypass without this class needing to know anything about that. */
+    void forEachButton (const std::function<void (juce::Button&)>& fn) { fn (bypassButton); }
 
 private:
     static constexpr int logoArea = 140;

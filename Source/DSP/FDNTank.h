@@ -144,7 +144,7 @@ public:
         {
             auto newVal = newInputBase + filtered[(size_t) i] + shimmerOut * inputSpread;
             newVal = smoothClamp (newVal * 0.2f) * 5.0f; // gentle soft-limit, transparent in normal range
-            lines[(size_t) i].pushSample (newVal);
+            lines[(size_t) i].pushSample (sanitize (newVal));
         }
 
         return rawTaps;

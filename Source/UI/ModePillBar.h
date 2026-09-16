@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "Theme.h"
 #include "../Parameters.h"
+#include <functional>
 
 namespace onyverb::ui
 {
@@ -42,6 +43,14 @@ public:
 
         for (int i = 0; i < buttons.size(); ++i)
             buttons[i]->setBounds (bounds.getX() + i * (w + gap), bounds.getY(), w, bounds.getHeight());
+    }
+
+    /** Lets the editor wire shared click-feedback (particle bursts) onto
+        every pill without this class needing to know anything about that. */
+    void forEachButton (const std::function<void (juce::Button&)>& fn)
+    {
+        for (auto* b : buttons)
+            fn (*b);
     }
 
 private:

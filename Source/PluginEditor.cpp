@@ -22,7 +22,7 @@ constexpr int footerHeight = 44;
 
 // Matches the current GitHub release tag — bump this by hand alongside each
 // release until this is wired up to the actual build/CI version.
-constexpr const char* versionString = "v0.0.9";
+constexpr const char* versionString = "v0.1.0";
 
 juce::File getAdvancedStateFile()
 {
@@ -168,6 +168,26 @@ OnyVerbEditor::OnyVerbEditor (OnyVerbProcessor& p)
     addAndMakeVisible (ecoModeButton);
     ecoModeButton.onClick = [this] { setEcoMode (! ecoMode, true); };
     setEcoMode (loadSavedEcoState(), false);
+
+    // Every button gets the same click-pop the orb gives its own transients
+    // — wired last, once every button's real onClick is already in place,
+    // since this wraps (rather than replaces) whatever was there.
+    ui::wireClickBurst (advancedToggle, particleOverlay);
+    ui::wireClickBurst (ecoModeButton, particleOverlay);
+    ui::wireClickBurst (insaneModeButton, particleOverlay);
+    header.forEachButton ([this] (juce::Button& b) { ui::wireClickBurst (b, particleOverlay); });
+    modePills.forEachButton ([this] (juce::Button& b) { ui::wireClickBurst (b, particleOverlay); });
+    presetBar.forEachButton ([this] (juce::Button& b) { ui::wireClickBurst (b, particleOverlay); });
+
+    // Same idea while a knob/slider is actively being dragged, rather than
+    // just on click — a light continuous trickle instead of one pop.
+    diffusionSlider.wireParticles (particleOverlay);
+    decaySlider.wireParticles (particleOverlay);
+    inputFader.wireParticles (particleOverlay);
+    outputFader.wireParticles (particleOverlay);
+    for (auto* row : { &knobRowFeatured, &knobRowA, &knobRowB })
+        for (auto* knob : *row)
+            knob->wireParticles (particleOverlay);
 
     setResizable (true, true);
     setResizeLimits (760, 560, 1600, 1200);
@@ -377,6 +397,9 @@ void OnyVerbEditor::setAdvancedVisible (bool visible, bool save)
 
     for (auto* knob : knobRowB)
         knob->setVisible (visible);
+
+    inputFader.setVisible (visible);
+    outputFader.setVisible (visible);
 
     advancedToggle.setButtonText ("Advanced");
     advancedToggle.setToggleState (visible, juce::dontSendNotification);
