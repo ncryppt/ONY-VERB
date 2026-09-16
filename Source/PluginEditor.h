@@ -69,6 +69,7 @@ private:
     bool advancedExpanded = true;
     juce::Label madeWithLoveLabel;
     juce::Label developedByLabel;
+    juce::Label versionLabel;
 
     ui::InsaneModeButton insaneModeButton;
     bool insaneMode = false;

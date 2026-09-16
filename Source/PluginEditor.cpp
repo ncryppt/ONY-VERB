@@ -18,7 +18,11 @@ constexpr int knobRowHeight = 92;
 constexpr int correlationWidth = 90;
 constexpr int correlationHeight = 34;
 constexpr int advancedToggleHeight = 24;
-constexpr int footerHeight = 30;
+constexpr int footerHeight = 44;
+
+// Matches the current GitHub release tag — bump this by hand alongside each
+// release until this is wired up to the actual build/CI version.
+constexpr const char* versionString = "v0.0.6";
 
 juce::File getAdvancedStateFile()
 {
@@ -144,6 +148,13 @@ OnyVerbEditor::OnyVerbEditor (OnyVerbProcessor& p)
     developedByLabel.setInterceptsMouseClicks (false, false);
     addAndMakeVisible (developedByLabel);
 
+    versionLabel.setText (versionString, juce::dontSendNotification);
+    versionLabel.setJustificationType (juce::Justification::centred);
+    versionLabel.setFont (ui::Theme::labelFont (10.0f));
+    versionLabel.setColour (juce::Label::textColourId, ui::Theme::textDim);
+    versionLabel.setInterceptsMouseClicks (false, false);
+    addAndMakeVisible (versionLabel);
+
     setAdvancedVisible (loadSavedAdvancedState(), false);
 
     themeSwitcher.onThemeChanged = [this] (int index) { applyTheme (index, true); };
@@ -210,6 +221,7 @@ void OnyVerbEditor::resized()
     particleOverlay.setBounds (getLocalBounds());
 
     auto b = getLocalBounds();
+    b.removeFromTop (8); // keep the header row (and Bypass button) off the window edge
 
     auto headerRow = b.removeFromTop (headerHeight);
     header.setBounds (headerRow);
@@ -220,16 +232,23 @@ void OnyVerbEditor::resized()
     insaneModeButton.setBounds (headerButtons);
 
     auto presetRow = b.removeFromTop (presetBarHeight);
+    presetRow.removeFromLeft (10); // keep the theme switcher off the window edge
     themeSwitcher.setBounds (presetRow.removeFromLeft (150).reduced (4, 2));
     presetRow.removeFromRight (150); // mirror the theme switcher's width so the preset combo stays centred
     presetBar.setBounds (presetRow.withSizeKeepingCentre (juce::jmin (420, presetRow.getWidth() - 20), presetBarHeight));
+
+    b.removeFromTop (6); // breathing room between the theme/preset row and the mode pills
 
     modePills.setBounds (b.removeFromTop (modePillHeight).reduced (12, 3));
     decayCurve.setBounds (b.removeFromTop (decayCurveHeight).reduced (10, 6));
 
     auto footerArea = b.removeFromBottom (footerHeight);
-    madeWithLoveLabel.setBounds (footerArea.removeFromTop (footerHeight / 2));
-    developedByLabel.setBounds (footerArea);
+    auto footerLineHeight = footerHeight / 3;
+    madeWithLoveLabel.setBounds (footerArea.removeFromTop (footerLineHeight));
+    developedByLabel.setBounds (footerArea.removeFromTop (footerLineHeight));
+    versionLabel.setBounds (footerArea);
+
+    b.removeFromBottom (10); // breathing room between the last knob row and the footer text
 
     auto rowsHeight = featuredRowHeight + knobRowHeight + advancedToggleHeight
                      + (advancedExpanded ? knobRowHeight : 0) + diffusionHeight * 2 + sliderGap;
@@ -342,6 +361,7 @@ void OnyVerbEditor::refreshAllThemedComponents()
     for (auto* knob : knobRowB) knob->refreshTheme();
     madeWithLoveLabel.setColour (juce::Label::textColourId, ui::Theme::textDim);
     developedByLabel.setColour (juce::Label::textColourId, ui::Theme::textDim);
+    versionLabel.setColour (juce::Label::textColourId, ui::Theme::textDim);
 
     sendLookAndFeelChange();
     repaint();
@@ -371,6 +391,7 @@ void OnyVerbEditor::setAdvancedVisible (bool visible, bool save)
     advancedToggle.setToggleState (visible, juce::dontSendNotification);
     madeWithLoveLabel.setVisible (visible);
     developedByLabel.setVisible (visible);
+    versionLabel.setVisible (visible);
 
     resized();
     repaint();
