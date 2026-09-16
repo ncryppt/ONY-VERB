@@ -75,7 +75,8 @@ class CharacterSlider final : public juce::Component
 public:
     CharacterSlider (juce::AudioProcessorValueTreeState& apvts, const juce::String& paramID, const juce::String& displayName)
         : slider (juce::Slider::LinearHorizontal, juce::Slider::NoTextBox),
-          attachment (*apvts.getParameter (paramID), slider, apvts.undoManager)
+          attachment (*apvts.getParameter (paramID), slider, apvts.undoManager),
+          unitLabel (apvts.getParameter (paramID)->getLabel())
     {
         addAndMakeVisible (slider);
 
@@ -113,11 +114,15 @@ public:
 private:
     void updateValueLabel()
     {
-        valueLabel.setText (slider.getTextFromValue (slider.getValue()), juce::dontSendNotification);
+        auto text = slider.getTextFromValue (slider.getValue());
+        if (unitLabel.isNotEmpty())
+            text << " " << unitLabel;
+        valueLabel.setText (text, juce::dontSendNotification);
     }
 
     juce::Slider slider;
     juce::SliderParameterAttachment attachment;
+    juce::String unitLabel;
     juce::Label nameLabel, valueLabel;
 };
 

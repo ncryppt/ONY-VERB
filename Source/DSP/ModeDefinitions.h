@@ -68,8 +68,8 @@ inline const ModeTuning& getModeTuning (ReverbMode mode)
         { 0.9f, 0.8f, 0.7f, 0.55f, 0.4f, 0.25f },
         0.6f,
         { 1.7f, 2.9f, 4.3f, 6.1f },
-        { 0.7f, 0.7f, 0.68f, 0.68f },
-        13000.0f, -0.08f, 0.6f, 0.4f, false, false
+        { 0.78f, 0.78f, 0.75f, 0.75f },
+        11500.0f, -0.03f, 0.95f, 0.4f, false, false
     };
 
     static const ModeTuning chamber {

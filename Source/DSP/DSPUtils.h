@@ -33,12 +33,14 @@ private:
     float state = 0.0f;
 };
 
-/** One-pole high-pass (DC / low-cut) filter, smooth cutoff parameter. */
+/** Two cascaded one-pole high-pass stages (-12dB/octave), same reasoning as
+    OnePoleLowpassAbs's cascade below — a single one-pole (-6dB/octave) Low
+    Cut left too much sub content audible relative to the knob position. */
 class OnePoleHighpass
 {
 public:
     void prepare (double sr) { sampleRate = sr; reset(); }
-    void reset() { state = 0.0f; prevIn = 0.0f; }
+    void reset() { state1 = 0.0f; prevIn1 = 0.0f; state2 = 0.0f; prevIn2 = 0.0f; }
 
     void setCutoff (float hz)
     {
@@ -49,25 +51,38 @@ public:
 
     inline float process (float x) noexcept
     {
-        auto y = coeff * (state + x - prevIn);
-        prevIn = x;
-        state = y;
-        return y;
+        auto y1 = coeff * (state1 + x - prevIn1);
+        prevIn1 = x;
+        state1 = y1;
+
+        auto y2 = coeff * (state2 + y1 - prevIn2);
+        prevIn2 = y1;
+        state2 = y2;
+
+        return y2;
     }
 
 private:
     double sampleRate = 44100.0;
     float coeff = 0.0f;
-    float state = 0.0f;
-    float prevIn = 0.0f;
+    float state1 = 0.0f;
+    float prevIn1 = 0.0f;
+    float state2 = 0.0f;
+    float prevIn2 = 0.0f;
 };
 
-/** Basic one-pole low-pass for pre-input tone shaping (separate from feedback damping). */
+/** Two cascaded one-pole low-pass stages (-12dB/octave) for pre-input tone
+    shaping and the tank's High Cut (separate from feedback damping). A
+    single one-pole is only -6dB/octave — gentle enough that content an
+    octave above the cutoff is barely touched, which read as "High Cut
+    doesn't cut enough" since the input stage (and, through it, the early
+    reflections) only ever gets one pass of it. Cascading gives a
+    noticeably firmer cut at the same cutoff frequency. */
 class OnePoleLowpassAbs
 {
 public:
     void prepare (double sr) { sampleRate = sr; reset(); }
-    void reset() { state = 0.0f; }
+    void reset() { state1 = 0.0f; state2 = 0.0f; }
 
     void setCutoff (float hz)
     {
@@ -77,14 +92,16 @@ public:
 
     inline float process (float x) noexcept
     {
-        state = x + coeff * (state - x);
-        return state;
+        state1 = x + coeff * (state1 - x);
+        state2 = state1 + coeff * (state2 - state1);
+        return state2;
     }
 
 private:
     double sampleRate = 44100.0;
     float coeff = 0.0f;
-    float state = 0.0f;
+    float state1 = 0.0f;
+    float state2 = 0.0f;
 };
 
 /** Fractional-delay line with linear interpolation and optional sinusoidal

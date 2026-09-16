@@ -62,9 +62,6 @@ private:
     ui::VerticalFader inputFader, outputFader;
     ui::ParticleOverlay particleOverlay;
 
-    juce::TextButton freezeButton;
-    juce::ButtonParameterAttachment freezeAttachment;
-
     juce::TextButton advancedToggle;
     bool advancedExpanded = true;
     juce::Label madeWithLoveLabel;

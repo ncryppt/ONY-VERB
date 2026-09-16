@@ -22,7 +22,7 @@ constexpr int footerHeight = 44;
 
 // Matches the current GitHub release tag — bump this by hand alongside each
 // release until this is wired up to the actual build/CI version.
-constexpr const char* versionString = "v0.0.8";
+constexpr const char* versionString = "v0.0.9";
 
 juce::File getAdvancedStateFile()
 {
@@ -97,8 +97,7 @@ OnyVerbEditor::OnyVerbEditor (OnyVerbProcessor& p)
       diffusionSlider (p.apvts, ParamIDs::diffusion, "Character"),
       decaySlider (p.apvts, ParamIDs::decayTime, "Decay"),
       inputFader (p.apvts, ParamIDs::inputGain, "In"),
-      outputFader (p.apvts, ParamIDs::outputGain, "Out"),
-      freezeAttachment (*p.apvts.getParameter (ParamIDs::freeze), freezeButton, p.apvts.undoManager)
+      outputFader (p.apvts, ParamIDs::outputGain, "Out")
 {
     setLookAndFeel (&lookAndFeel);
 
@@ -113,12 +112,6 @@ OnyVerbEditor::OnyVerbEditor (OnyVerbProcessor& p)
     addAndMakeVisible (decaySlider);
     addAndMakeVisible (inputFader);
     addAndMakeVisible (outputFader);
-
-    freezeButton.setButtonText ("Freeze");
-    freezeButton.getProperties().set ("pill", true);
-    freezeButton.setClickingTogglesState (true);
-    addAndMakeVisible (freezeButton);
-    freezeAttachment.sendInitialUpdate();
 
     buildKnobRow (knobRowFeatured, { { ParamIDs::lowCut, "Low Cut" }, { ParamIDs::dryLevel, "Dry" },
                                       { ParamIDs::wetLevel, "Wet" }, { ParamIDs::highCut, "High Cut" } }, true);
@@ -275,8 +268,6 @@ void OnyVerbEditor::resized()
     auto orbSize = juce::jmax (40, juce::jmin (orbArea.getWidth(), orbArea.getHeight()));
     orb.setBounds (orbArea.withSizeKeepingCentre (orbSize, orbSize));
     particleOverlay.setOrbGeometry (orb.getBounds().toFloat().getCentre(), (float) orbSize * 0.5f * 0.6f);
-
-    freezeButton.setBounds (orbArea.getRight() - 84, orbArea.getY() + 6, 76, 26);
 
     diffusionSlider.setBounds (knobsArea.removeFromTop (diffusionHeight).reduced (20, 2));
     knobsArea.removeFromTop (sliderGap);
