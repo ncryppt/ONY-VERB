@@ -178,7 +178,18 @@ public:
     inline float readAt (float delaySamples) const noexcept
     {
         delaySamples = juce::jlimit (0.0f, (float) buffer.size() - 2.0f, delaySamples);
-        auto readPosF = (float) writePos - delaySamples;
+
+        // write() is always called before readAt() for a given sample, so
+        // writePos already points one slot past the sample just written —
+        // reading at "0 samples ago" (delaySamples == 0) needs writePos - 1
+        // to land on that sample. Without the -1 here, delaySamples == 0
+        // wrapped all the way around to the OLDEST sample in the buffer
+        // instead of the newest, i.e. every read was stale by the buffer's
+        // full length (~520ms for pre-delay, ~200ms for early reflections)
+        // whenever a knob was left at or near 0 — audible as a fixed delay
+        // on the entire wet signal, most obvious at 100% wet with no dry
+        // signal to mask it.
+        auto readPosF = (float) writePos - 1.0f - delaySamples;
         while (readPosF < 0.0f)
             readPosF += (float) buffer.size();
 
