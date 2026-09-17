@@ -248,6 +248,33 @@ public:
 
     juce::Font getLabelFont (juce::Label&) override { return Theme::labelFont (13.0f); }
 
+    /** Value readouts (knobs, the Character/Decay sliders, the gain rails)
+        opt into this via a "lcd" component property instead of the default
+        plain-text label — a small backlit display chip in place of bare
+        coloured text. */
+    void drawLabel (juce::Graphics& g, juce::Label& label) override
+    {
+        if (! label.getProperties().contains ("lcd"))
+        {
+            LookAndFeel_V4::drawLabel (g, label);
+            return;
+        }
+
+        auto lit = static_cast<bool> (label.getProperties().getWithDefault ("lcdOn", true));
+
+        auto bounds = label.getLocalBounds().toFloat();
+        Theme::fillLcdChip (g, bounds, lit);
+
+        // Lit text sits on a plain dark screen on dark themes (accent reads
+        // fine there) but on the saturated accent wash a lit light-theme
+        // chip gets instead, accent-on-accent has too little contrast —
+        // white reads cleanly against that wash regardless of hue.
+        auto litTextColour = Theme::currentThemeIsLight ? juce::Colours::white : Theme::accent;
+        g.setColour (lit ? litTextColour : Theme::textDim);
+        g.setFont (juce::Font (juce::FontOptions (juce::Font::getDefaultMonospacedFontName(), bounds.getHeight() * 0.62f, juce::Font::bold)));
+        g.drawFittedText (label.getText(), label.getLocalBounds(), juce::Justification::centred, 1);
+    }
+
 private:
     /** A small tileable grain: sparse salt-and-pepper specks (some lighter,
         some darker than whatever's underneath), clipped to each knob's own

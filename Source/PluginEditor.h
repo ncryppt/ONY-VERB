@@ -78,6 +78,14 @@ private:
     juce::OwnedArray<ui::KnobWithLabel> knobRowA;        // Size, Pre-Delay, Width, Early Reflections
     juce::OwnedArray<ui::KnobWithLabel> knobRowB;        // Damping, Mod Depth, Mod Rate — the collapsible "Advanced" row
 
+    /** The Character/Decay sliders, the featured knob row, and the
+        remaining knob rows each get their own indented panel (see
+        paint()) rather than sharing one — these are captured in
+        resized() before each region is carved up row by row. */
+    juce::Rectangle<int> slidersPanelBounds;
+    juce::Rectangle<int> featuredPanelBounds;
+    juce::Rectangle<int> knobsPanelBounds;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (OnyVerbEditor)
 };
 

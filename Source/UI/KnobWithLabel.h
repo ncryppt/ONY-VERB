@@ -31,6 +31,7 @@ public:
         valueLabel.setJustificationType (juce::Justification::centred);
         valueLabel.setColour (juce::Label::textColourId, Theme::accent);
         valueLabel.setFont (Theme::labelFont (emphasized ? 12.5f : 10.5f));
+        valueLabel.getProperties().set ("lcd", true);
         addAndMakeVisible (valueLabel);
 
         slider.onValueChange = [this] { updateValueLabel(); };
@@ -41,9 +42,13 @@ public:
     {
         auto b = getLocalBounds();
         auto nameHeight = emphasized ? 19 : 15;
-        auto valueHeight = emphasized ? 18 : 14;
+        auto valueHeight = emphasized ? 20 : 16;
         nameLabel.setBounds (b.removeFromTop (nameHeight));
-        valueLabel.setBounds (b.removeFromBottom (valueHeight));
+
+        auto valueBounds = b.removeFromBottom (valueHeight);
+        auto chipWidth = juce::jmin (valueBounds.getWidth() - 8, emphasized ? 56 : 46);
+        valueLabel.setBounds (valueBounds.withSizeKeepingCentre (chipWidth, valueBounds.getHeight()));
+
         slider.setBounds (b.reduced (emphasized ? 4 : 2));
     }
 
@@ -62,6 +67,8 @@ private:
     void updateValueLabel()
     {
         valueLabel.setText (slider.getTextFromValue (slider.getValue()), juce::dontSendNotification);
+        valueLabel.getProperties().set ("lcdOn", slider.getValue() > 0.0);
+        valueLabel.repaint();
     }
 
     juce::Slider slider;
@@ -89,9 +96,10 @@ public:
         nameLabel.setFont (Theme::labelFont (11.5f));
         addAndMakeVisible (nameLabel);
 
-        valueLabel.setJustificationType (juce::Justification::centredRight);
+        valueLabel.setJustificationType (juce::Justification::centred);
         valueLabel.setColour (juce::Label::textColourId, Theme::accent);
         valueLabel.setFont (Theme::labelFont (11.5f));
+        valueLabel.getProperties().set ("lcd", true);
         addAndMakeVisible (valueLabel);
 
         slider.onValueChange = [this] { updateValueLabel(); };
@@ -101,8 +109,9 @@ public:
     void resized() override
     {
         auto b = getLocalBounds();
-        auto topRow = b.removeFromTop (16);
-        valueLabel.setBounds (topRow.removeFromRight (70));
+        auto topRow = b.removeFromTop (18);
+        valueLabel.setBounds (topRow.removeFromRight (62).reduced (0, 1));
+        topRow.removeFromRight (6);
         nameLabel.setBounds (topRow);
         slider.setBounds (b.reduced (4, 0));
     }
@@ -123,6 +132,8 @@ private:
         if (unitLabel.isNotEmpty())
             text << " " << unitLabel;
         valueLabel.setText (text, juce::dontSendNotification);
+        valueLabel.getProperties().set ("lcdOn", slider.getValue() > 0.0);
+        valueLabel.repaint();
     }
 
     juce::Slider slider;
@@ -151,17 +162,22 @@ public:
         valueLabel.setJustificationType (juce::Justification::centred);
         valueLabel.setColour (juce::Label::textColourId, Theme::accent);
         valueLabel.setFont (Theme::labelFont (10.0f));
+        valueLabel.getProperties().set ("lcd", true);
         addAndMakeVisible (valueLabel);
 
-        slider.onValueChange = [this] { valueLabel.setText (slider.getTextFromValue (slider.getValue()), juce::dontSendNotification); };
-        valueLabel.setText (slider.getTextFromValue (slider.getValue()), juce::dontSendNotification);
+        slider.onValueChange = [this] { updateValueLabel(); };
+        updateValueLabel();
     }
 
     void resized() override
     {
         auto b = getLocalBounds();
         nameLabel.setBounds (b.removeFromTop (15));
-        valueLabel.setBounds (b.removeFromBottom (14));
+
+        auto valueBounds = b.removeFromBottom (16);
+        auto chipWidth = juce::jmin (valueBounds.getWidth() - 4, 42);
+        valueLabel.setBounds (valueBounds.withSizeKeepingCentre (chipWidth, valueBounds.getHeight()));
+
         slider.setBounds (b);
     }
 
@@ -175,6 +191,13 @@ public:
     void wireParticles (ParticleOverlay& overlay) { wireDragTrickle (slider, overlay); }
 
 private:
+    void updateValueLabel()
+    {
+        valueLabel.setText (slider.getTextFromValue (slider.getValue()), juce::dontSendNotification);
+        valueLabel.getProperties().set ("lcdOn", slider.getValue() > 0.0);
+        valueLabel.repaint();
+    }
+
     juce::Slider slider;
     juce::SliderParameterAttachment attachment;
     juce::Label nameLabel, valueLabel;

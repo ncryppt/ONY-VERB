@@ -28,6 +28,7 @@ public:
         : ringBuffer (ringBufferIn), freezeParam (freezeParamIn)
     {
         pulseAges.fill (-1.0f);
+        buildMesh();
         startTimerHz (45);
     }
 
@@ -70,9 +71,7 @@ public:
 
         drawGlowAndBody (g, centre, radius, maxRadius, coreColour, glowColour, liveliness);
         drawSpecularHighlight (g, centre, radius);
-
-        g.setColour (glowColour.withAlpha (0.55f));
-        g.drawEllipse (juce::Rectangle<float> (radius * 2.0f, radius * 2.0f).withCentre (centre), 1.3f);
+        drawWireframeMesh (g, centre, radius, maxRadius, glowColour, liveliness);
 
         drawHudRing (g, centre, radius, maxRadius, glowColour);
         drawPulses (g, centre, radius, maxRadius, glowColour);
@@ -100,6 +99,122 @@ private:
     // (otherwise circular) orb. Every radius below is kept just inside that
     // limit so everything fades away (or simply ends) before the edge.
     static float capRadius (float r, float maxRadius) { return juce::jmin (r, maxRadius * 0.985f); }
+
+    // ---------------------------------------------------------------------
+    // Wireframe mesh: a UV-sphere grid of points, displaced along their own
+    // radius by a smooth (not per-point-random) noise field so neighbouring
+    // points bulge and fold together into lumpy, organic-looking blobs
+    // rather than a spiky sea urchin, then spun live and projected with a
+    // simple orthographic rotation — a 2D approximation of a genuinely 3D
+    // audio-reactive mesh rather than a flat disc.
+    // ---------------------------------------------------------------------
+
+    struct MeshPoint { float x, y, z, theta, phi; };
+
+    static constexpr int kLatRings = 11;
+    static constexpr int kLonSegments = 18;
+    static constexpr int kNumMeshPoints = (kLatRings + 1) * kLonSegments;
+    static constexpr float kViewTilt = -0.5f; // fixed viewing angle so the grid's curvature reads as 3D rather than face-on
+
+    void buildMesh()
+    {
+        int idx = 0;
+        for (int i = 0; i <= kLatRings; ++i)
+        {
+            auto theta = (float) i / (float) kLatRings * juce::MathConstants<float>::pi;
+
+            for (int j = 0; j < kLonSegments; ++j)
+            {
+                auto phi = (float) j / (float) kLonSegments * juce::MathConstants<float>::twoPi;
+
+                meshPoints[(size_t) idx++] = {
+                    std::sin (theta) * std::cos (phi),
+                    std::cos (theta),
+                    std::sin (theta) * std::sin (phi),
+                    theta, phi
+                };
+            }
+        }
+    }
+
+    /** A handful of low-frequency sinusoids summed together — cheap next to
+        real 3D noise, but continuous across the sphere's surface (unlike
+        independent per-vertex randomness), which is what actually reads as
+        smooth lumps and creases instead of static-y spikes. Roughly in
+        [-1, 1]. `time` slowly drifts the pattern so the blob subtly writhes
+        even at rest. */
+    static float blobNoise (float theta, float phi, float time)
+    {
+        float n = 0.0f;
+        n += 0.35f * std::sin (3.0f * theta + time * 0.6f) * std::cos (2.0f * phi + time * 0.4f);
+        n += 0.25f * std::sin (5.0f * theta - time * 0.5f + 1.7f) * std::cos (4.0f * phi + 2.1f);
+        n += 0.22f * std::sin (2.0f * theta + 0.8f) * std::cos (6.0f * phi - time * 0.7f + 0.4f);
+        n += 0.18f * std::sin (7.0f * theta - 0.6f) * std::cos (3.0f * phi + time * 0.3f + 3.0f);
+        return n;
+    }
+
+    void drawWireframeMesh (juce::Graphics& g, juce::Point<float> centre, float radius, float maxRadius,
+                             juce::Colour glowColour, float liveliness) const
+    {
+        auto spin = meshSpin;
+        auto cosSpin = std::cos (spin), sinSpin = std::sin (spin);
+        auto cosTilt = std::cos (kViewTilt), sinTilt = std::sin (kViewTilt);
+        auto bulgeAmount = 0.26f + 0.22f * liveliness;
+        auto r = capRadius (radius, maxRadius);
+
+        std::array<juce::Point<float>, kNumMeshPoints> projected;
+        std::array<float, kNumMeshPoints> depth;
+
+        for (int idx = 0; idx < kNumMeshPoints; ++idx)
+        {
+            auto& p = meshPoints[(size_t) idx];
+            auto bulge = 1.0f + bulgeAmount * blobNoise (p.theta, p.phi, meshNoisePhase);
+
+            auto x = p.x * bulge, y = p.y * bulge, z = p.z * bulge;
+
+            // Fixed tilt (around X) for a pleasant viewing angle, then the
+            // live spin (around Y) on top of it.
+            auto ty = y * cosTilt - z * sinTilt;
+            auto tz = y * sinTilt + z * cosTilt;
+            auto rx = x * cosSpin - tz * sinSpin;
+            auto rz = x * sinSpin + tz * cosSpin;
+
+            projected[(size_t) idx] = { centre.x + rx * r, centre.y + ty * r };
+            depth[(size_t) idx] = rz;
+        }
+
+        auto edgeAlpha = [] (float d) { return juce::jmap (juce::jlimit (-1.0f, 1.0f, d), -1.0f, 1.0f, 0.06f, 0.8f); };
+
+        for (int i = 0; i <= kLatRings; ++i)
+        {
+            for (int j = 0; j < kLonSegments; ++j)
+            {
+                auto idx = i * kLonSegments + j;
+                auto ringNeighbour = i * kLonSegments + (j + 1) % kLonSegments;
+
+                auto a = edgeAlpha (depth[(size_t) idx]);
+                auto b = edgeAlpha (depth[(size_t) ringNeighbour]);
+                g.setColour (glowColour.withAlpha (juce::jmax (a, b) * 0.65f));
+                g.drawLine (juce::Line<float> (projected[(size_t) idx], projected[(size_t) ringNeighbour]), 0.9f);
+
+                if (i < kLatRings)
+                {
+                    auto belowNeighbour = (i + 1) * kLonSegments + j;
+                    auto c = edgeAlpha (depth[(size_t) belowNeighbour]);
+                    g.setColour (glowColour.withAlpha (juce::jmax (a, c) * 0.65f));
+                    g.drawLine (juce::Line<float> (projected[(size_t) idx], projected[(size_t) belowNeighbour]), 0.9f);
+                }
+            }
+        }
+
+        for (int idx = 0; idx < kNumMeshPoints; ++idx)
+        {
+            auto a = edgeAlpha (depth[(size_t) idx]);
+            auto dotR = 1.4f;
+            g.setColour (glowColour.withAlpha (a));
+            g.fillEllipse (juce::Rectangle<float> (dotR * 2.0f, dotR * 2.0f).withCentre (projected[(size_t) idx]));
+        }
+    }
 
     void drawGlowAndBody (juce::Graphics& g, juce::Point<float> centre, float radius, float maxRadius,
                            juce::Colour coreColour, juce::Colour glowColour, float liveliness) const
@@ -244,6 +359,12 @@ private:
         if (swirlPhase > juce::MathConstants<float>::twoPi)
             swirlPhase -= juce::MathConstants<float>::twoPi;
 
+        meshSpin += 0.011f;
+        if (meshSpin > juce::MathConstants<float>::twoPi)
+            meshSpin -= juce::MathConstants<float>::twoPi;
+
+        meshNoisePhase += frameSeconds * 0.7f;
+
         repaint();
     }
 
@@ -273,6 +394,10 @@ private:
     float pulseCooldown = 0.0f;
     std::array<float, 4> pulseAges;
     bool freezeActive = false;
+
+    std::array<MeshPoint, kNumMeshPoints> meshPoints;
+    float meshSpin = 0.0f;
+    float meshNoisePhase = 0.0f;
 };
 
 } // namespace onyverb::ui

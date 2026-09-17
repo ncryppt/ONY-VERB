@@ -122,6 +122,129 @@ inline void fillBeveledPill (juce::Graphics& g, juce::Rectangle<float> bounds, b
     }
 }
 
+/** The inverse of fillBeveledRoundedRect(): a panel that reads as recessed
+    into the surface rather than raised off it — used for areas (the knob
+    cluster) that should look carved into the main background rather than
+    floating on it. A fill slightly darker than the background sets the
+    area apart, a soft shadow falls inward from the top edge (as if the
+    opening's near rim were casting it), and the edge stroke's gradient is
+    flipped — dark at the top, a faint light catch at the bottom — from the
+    raised version's. */
+inline void fillIndentedRoundedRect (juce::Graphics& g, juce::Rectangle<float> bounds, float radius)
+{
+    juce::ColourGradient surface (background.darker (currentThemeIsLight ? 0.03f : 0.25f), bounds.getX(), bounds.getY(),
+                                    background.darker (currentThemeIsLight ? 0.0f : 0.1f), bounds.getX(), bounds.getBottom(), false);
+    g.setGradientFill (surface);
+    g.fillRoundedRectangle (bounds, radius);
+
+    {
+        juce::Path clip;
+        clip.addRoundedRectangle (bounds, radius);
+        juce::Graphics::ScopedSaveState state (g);
+        g.reduceClipRegion (clip);
+
+        // A shadow caster sitting just above the panel's top edge, clipped
+        // to stay inside it — the blur that spills downward past the edge
+        // reads as light falling into a recess rather than a flat tint.
+        juce::Path caster;
+        caster.addRectangle (bounds.getX() - 10.0f, bounds.getY() - 14.0f, bounds.getWidth() + 20.0f, 14.0f);
+        juce::DropShadow shadow (juce::Colours::black.withAlpha (currentThemeIsLight ? 0.035f : 0.4f), 10, { 0, 5 });
+        shadow.drawForPath (g, caster);
+    }
+
+    juce::Path outline;
+    outline.addRoundedRectangle (bounds, radius);
+    // On light themes a white "light catch" at the bottom is nearly
+    // invisible against an already-light panel — the theme's own hairline
+    // colour (tuned to read against that panel) gives the bottom edge
+    // actual definition instead.
+    juce::ColourGradient edge (juce::Colours::black.withAlpha (currentThemeIsLight ? 0.025f : 0.35f), bounds.getX(), bounds.getY(),
+                                 currentThemeIsLight ? hairline : juce::Colours::white.withAlpha (0.08f), bounds.getX(), bounds.getBottom(), false);
+    g.setGradientFill (edge);
+    g.strokePath (outline, juce::PathStrokeType (1.2f));
+}
+
+/** A small backlit LCD-style chip for knob/slider value readouts — a dark
+    recessed "screen" with faint vertical scanlines, echoing a retro
+    segmented display rather than a plain text label. Text itself is drawn
+    by the caller on top. `lit` is false for a parameter sitting at exactly
+    zero (i.e. off) — the glow and accent border drop out in favour of a
+    dim hairline, the same way an LCD segment reads as unlit rather than
+    displaying "0".
+
+    On light themes, a lit chip glows across its whole face (a blurred glow
+    behind the filled shape plus an accent wash over the screen) rather than
+    just along a thin border stroke — a bare border-only glow reads as a
+    stray hard edge on a light background, and it left the scanlines
+    underneath looking like harsh dark stripes rather than a subtle texture.
+    Dark themes keep the plain dark screen with a border-only glow.
+
+    A real drop shadow onto whatever's behind it, plus a top-lit gradient
+    fill rather than a flat one, give the chip some pop — it reads as a
+    small raised button sitting above the indented knob panel rather than a
+    flat screen flush with it. */
+inline void fillLcdChip (juce::Graphics& g, juce::Rectangle<float> bounds, bool lit)
+{
+    auto radius = juce::jmin (4.0f, bounds.getHeight() * 0.3f);
+    auto glowWholeChip = lit && currentThemeIsLight;
+
+    juce::Path shape;
+    shape.addRoundedRectangle (bounds, radius);
+
+    dropShadowForRoundedRect (g, bounds, radius, 0.45f);
+
+    if (glowWholeChip)
+    {
+        // A properly saturated wash rather than a pale tint — strong enough
+        // that white text (see OnyvaLookAndFeel::drawLabel) reads clearly
+        // against it regardless of the theme's particular accent hue. The
+        // alpha itself tapers top-to-bottom, so the wash already carries a
+        // top-lit feel without needing a separate gradient.
+        juce::DropShadow glow (accent.withAlpha (0.45f), 8, {});
+        glow.drawForPath (g, shape);
+
+        juce::ColourGradient wash (accent.withAlpha (0.65f), bounds.getX(), bounds.getY(),
+                                     accent.withAlpha (0.40f), bounds.getX(), bounds.getBottom(), false);
+        g.setGradientFill (wash);
+        g.fillRoundedRectangle (bounds, radius);
+    }
+    else
+    {
+        if (lit)
+        {
+            juce::DropShadow glow (accent.withAlpha (0.3f), 5, {});
+            glow.drawForPath (g, shape);
+        }
+
+        auto base = background.darker (currentThemeIsLight ? 0.0f : 0.25f);
+        juce::ColourGradient surface (base.brighter (0.08f), bounds.getX(), bounds.getY(),
+                                        base.darker (0.08f), bounds.getX(), bounds.getBottom(), false);
+        g.setGradientFill (surface);
+        g.fillRoundedRectangle (bounds, radius);
+    }
+
+    {
+        // Light themes keep the scanlines faint in both states — at the
+        // dark theme's usual strength they show up as harsh stripes against
+        // a light screen rather than a subtle texture, on or off.
+        juce::Graphics::ScopedSaveState state (g);
+        g.reduceClipRegion (shape);
+        g.setColour (juce::Colours::black.withAlpha (currentThemeIsLight ? 0.05f : 0.12f));
+        for (float x = bounds.getX(); x < bounds.getRight(); x += 2.0f)
+            g.drawVerticalLine ((int) x, bounds.getY(), bounds.getBottom());
+    }
+
+    // A faint embossed edge — light catching the top, shadow pooling at the
+    // bottom — sitting just behind the on/off colour ring below.
+    juce::ColourGradient edge (juce::Colours::white.withAlpha (0.3f), bounds.getX(), bounds.getY(),
+                                 juce::Colours::black.withAlpha (0.25f), bounds.getX(), bounds.getBottom(), false);
+    g.setGradientFill (edge);
+    g.strokePath (shape, juce::PathStrokeType (1.6f));
+
+    g.setColour (lit ? accent.withAlpha (glowWholeChip ? 0.35f : 0.5f) : hairline);
+    g.drawRoundedRectangle (bounds, radius, 1.0f);
+}
+
 // ---------------------------------------------------------------------------
 // Palettes
 // ---------------------------------------------------------------------------

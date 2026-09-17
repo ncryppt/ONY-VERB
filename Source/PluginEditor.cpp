@@ -19,10 +19,12 @@ constexpr int correlationWidth = 90;
 constexpr int correlationHeight = 34;
 constexpr int advancedToggleHeight = 24;
 constexpr int footerHeight = 56;
+constexpr int knobsPanelGap = 10;     // breathing room between the sliders panel and the knob-rows panel
+constexpr int knobsPanelPadding = 8;  // breathing room between each panel's edge and its own contents
 
 // Matches the current GitHub release tag — bump this by hand alongside each
 // release until this is wired up to the actual build/CI version.
-constexpr const char* versionString = "v0.1.2";
+constexpr const char* versionString = "v0.1.3";
 
 juce::File getAdvancedStateFile()
 {
@@ -227,6 +229,15 @@ void OnyVerbEditor::paint (juce::Graphics& g)
         g.setGradientFill (wash);
         g.fillRect (bounds);
     }
+
+    if (! slidersPanelBounds.isEmpty())
+        ui::Theme::fillIndentedRoundedRect (g, slidersPanelBounds.toFloat().reduced (2.0f), 14.0f);
+
+    if (! featuredPanelBounds.isEmpty())
+        ui::Theme::fillIndentedRoundedRect (g, featuredPanelBounds.toFloat().reduced (2.0f), 14.0f);
+
+    if (! knobsPanelBounds.isEmpty())
+        ui::Theme::fillIndentedRoundedRect (g, knobsPanelBounds.toFloat().reduced (2.0f), 14.0f);
 }
 
 void OnyVerbEditor::resized()
@@ -267,7 +278,8 @@ void OnyVerbEditor::resized()
     b.removeFromBottom (10); // breathing room between the last knob row and the footer text
 
     auto rowsHeight = featuredRowHeight + knobRowHeight + advancedToggleHeight
-                     + (advancedExpanded ? knobRowHeight : 0) + diffusionHeight * 2 + sliderGap;
+                     + (advancedExpanded ? knobRowHeight : 0) + diffusionHeight * 2 + sliderGap
+                     + knobsPanelGap * 2 + knobsPanelPadding * 6;
     auto mainArea = b.reduced (8, 4);
 
     auto leftRail = mainArea.removeFromLeft (railWidth);
@@ -292,22 +304,37 @@ void OnyVerbEditor::resized()
     orb.setBounds (orbArea.withSizeKeepingCentre (orbSize, orbSize));
     particleOverlay.setOrbGeometry (orb.getBounds().toFloat().getCentre(), (float) orbSize * 0.5f * 0.6f);
 
-    diffusionSlider.setBounds (knobsArea.removeFromTop (diffusionHeight).reduced (20, 2));
-    knobsArea.removeFromTop (sliderGap);
-    decaySlider.setBounds (knobsArea.removeFromTop (diffusionHeight).reduced (20, 2));
-    layoutKnobRowCentered (knobRowFeatured, knobsArea.removeFromTop (featuredRowHeight), 170);
+    // Character/Decay, the featured knob row, and the remaining knob rows
+    // each sit in their own separate indented panel (see paint()) rather
+    // than sharing one card, each with a little internal padding so the
+    // sliders/knobs don't crowd right up against the panel edge.
+    auto slidersArea = knobsArea.removeFromTop (diffusionHeight * 2 + sliderGap + knobsPanelPadding * 2);
+    slidersPanelBounds = slidersArea;
+    auto slidersContent = slidersArea.reduced (0, knobsPanelPadding);
+    diffusionSlider.setBounds (slidersContent.removeFromTop (diffusionHeight).reduced (20, 2));
+    slidersContent.removeFromTop (sliderGap);
+    decaySlider.setBounds (slidersContent.removeFromTop (diffusionHeight).reduced (20, 2));
+
+    knobsArea.removeFromTop (knobsPanelGap);
+    auto featuredArea = knobsArea.removeFromTop (featuredRowHeight + knobsPanelPadding * 2);
+    featuredPanelBounds = featuredArea;
+    layoutKnobRowCentered (knobRowFeatured, featuredArea.reduced (0, knobsPanelPadding), 170);
+
+    knobsArea.removeFromTop (knobsPanelGap);
+    knobsPanelBounds = knobsArea;
+    auto knobsContent = knobsArea.reduced (0, knobsPanelPadding);
 
     // Rows A and B share one column grid (sized off the wider row) so knobs
     // that stack vertically actually line up, instead of each row stretching
     // its own knob count independently across the full width.
-    auto columnWidth = knobsArea.getWidth() / juce::jmax (knobRowA.size(), knobRowB.size());
-    layoutKnobRowAligned (knobRowA, knobsArea.removeFromTop (knobRowHeight), columnWidth);
+    auto columnWidth = knobsContent.getWidth() / juce::jmax (knobRowA.size(), knobRowB.size());
+    layoutKnobRowAligned (knobRowA, knobsContent.removeFromTop (knobRowHeight), columnWidth);
 
-    auto toggleRow = knobsArea.removeFromTop (advancedToggleHeight);
+    auto toggleRow = knobsContent.removeFromTop (advancedToggleHeight);
     advancedToggle.setBounds (toggleRow.withSizeKeepingCentre (120, advancedToggleHeight - 4));
 
     if (advancedExpanded)
-        layoutKnobRowAligned (knobRowB, knobsArea.removeFromTop (knobRowHeight), columnWidth);
+        layoutKnobRowAligned (knobRowB, knobsContent.removeFromTop (knobRowHeight), columnWidth);
 }
 
 void OnyVerbEditor::layoutKnobRowCentered (juce::OwnedArray<ui::KnobWithLabel>& row, juce::Rectangle<int> area, int maxSlotWidth)
@@ -403,6 +430,7 @@ void OnyVerbEditor::setAdvancedVisible (bool visible, bool save)
 
     inputFader.setVisible (visible);
     outputFader.setVisible (visible);
+    correlationMeter.setVisible (visible);
 
     advancedToggle.setButtonText ("Advanced");
     advancedToggle.setToggleState (visible, juce::dontSendNotification);
