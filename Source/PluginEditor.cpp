@@ -24,7 +24,7 @@ constexpr int knobsPanelPadding = 8;  // breathing room between each panel's edg
 
 // Matches the current GitHub release tag — bump this by hand alongside each
 // release until this is wired up to the actual build/CI version.
-constexpr const char* versionString = "v0.1.3";
+constexpr const char* versionString = "v0.1.4";
 
 juce::File getAdvancedStateFile()
 {
