@@ -23,6 +23,7 @@ public:
         // accent colour rather than drawn in its original white, so it
         // reads as branded-to-the-theme rather than just light/dark.
         logoImage = juce::ImageCache::getFromMemory (BinaryData::ONYVA_Logowhite_png, BinaryData::ONYVA_Logowhite_pngSize);
+        mapleLeafImage = juce::ImageCache::getFromMemory (BinaryData::CanadaMapleLeaf_png, BinaryData::CanadaMapleLeaf_pngSize);
 
         bypassButton.setButtonText ("Bypass");
         bypassButton.getProperties().set ("pill", true);
@@ -60,6 +61,24 @@ public:
                 g.setColour (Theme::accent);
                 g.fillPath (makeLeafPath (leafSize), juce::AffineTransform::translation (leafCentre));
             }
+            else if (Theme::canadaActive && mapleLeafImage.isValid())
+            {
+                // Same alpha-mask-and-tint treatment as the logo above,
+                // rather than a hand-drawn path — this is the actual flag
+                // maple leaf, not an approximation of it.
+                auto leafHeight = targetRect.getHeight() * 0.85f;
+                auto leafWidth = leafHeight * (float) mapleLeafImage.getWidth() / (float) mapleLeafImage.getHeight();
+                auto leafBounds = juce::Rectangle<float> (leafWidth, leafHeight)
+                                       .withCentre ({ targetRect.getRight() + 10.0f + leafWidth * 0.5f, targetRect.getCentreY() });
+
+                juce::RectanglePlacement leafPlacement (juce::RectanglePlacement::centred);
+                auto leafTransform = leafPlacement.getTransformToFit (mapleLeafImage.getBounds().toFloat(), leafBounds);
+                g.saveState();
+                g.reduceClipRegion (mapleLeafImage, leafTransform);
+                g.setColour (Theme::accent);
+                g.fillRect (leafBounds);
+                g.restoreState();
+            }
         }
     }
 
@@ -82,6 +101,7 @@ private:
     static constexpr float logoLeftMargin = 28.0f;
 
     juce::Image logoImage;
+    juce::Image mapleLeafImage;
     juce::TextButton bypassButton;
     juce::ButtonParameterAttachment bypassAttachment;
 };

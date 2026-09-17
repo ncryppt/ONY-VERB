@@ -9,7 +9,7 @@ namespace
 constexpr int headerHeight = 62;
 constexpr int presetBarHeight = 30;
 constexpr int modePillHeight = 38;
-constexpr int decayCurveHeight = 108;
+constexpr int decayCurveHeight = 160;
 constexpr int railWidth = 56;
 constexpr int diffusionHeight = 46;
 constexpr int sliderGap = 12;
@@ -18,11 +18,11 @@ constexpr int knobRowHeight = 92;
 constexpr int correlationWidth = 90;
 constexpr int correlationHeight = 34;
 constexpr int advancedToggleHeight = 24;
-constexpr int footerHeight = 44;
+constexpr int footerHeight = 56;
 
 // Matches the current GitHub release tag — bump this by hand alongside each
 // release until this is wired up to the actual build/CI version.
-constexpr const char* versionString = "v0.1.1";
+constexpr const char* versionString = "v0.1.2";
 
 juce::File getAdvancedStateFile()
 {
@@ -191,7 +191,7 @@ OnyVerbEditor::OnyVerbEditor (OnyVerbProcessor& p)
 
     setResizable (true, true);
     setResizeLimits (760, 560, 1600, 1200);
-    setSize (960, 920);
+    setSize (960, 972);
 }
 
 OnyVerbEditor::~OnyVerbEditor()
@@ -256,9 +256,12 @@ void OnyVerbEditor::resized()
     decayCurve.setBounds (b.removeFromTop (decayCurveHeight).reduced (10, 6));
 
     auto footerArea = b.removeFromBottom (footerHeight);
-    auto footerLineHeight = footerHeight / 3;
+    constexpr int footerLineGap = 4;
+    auto footerLineHeight = (footerHeight - footerLineGap * 2) / 3;
     madeWithLoveLabel.setBounds (footerArea.removeFromTop (footerLineHeight));
+    footerArea.removeFromTop (footerLineGap);
     developedByLabel.setBounds (footerArea.removeFromTop (footerLineHeight));
+    footerArea.removeFromTop (footerLineGap);
     versionLabel.setBounds (footerArea);
 
     b.removeFromBottom (10); // breathing room between the last knob row and the footer text

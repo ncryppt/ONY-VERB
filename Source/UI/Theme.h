@@ -38,6 +38,11 @@ inline bool kushKomaActive = false;
 // psychedelic flourishes on top.
 inline bool acidTripActive = false;
 
+// Set by applyPalette() below; lets theme-aware extras (the maple leaf
+// beside the logo, beaver-shaped particles) know when the "Canada Eh?"
+// theme is active.
+inline bool canadaActive = false;
+
 // Set by applyPalette() below. HeaderBar uses this to pick the black logo
 // variant instead of white — the mark would otherwise vanish against a
 // light background.
@@ -136,9 +141,9 @@ struct ThemePalette
 // instead, which direct-initializes fine.
 inline juce::Colour C (juce::uint32 argb) { return juce::Colour (argb); }
 
-inline const std::array<ThemePalette, 16>& getThemePalettes()
+inline const std::array<ThemePalette, 18>& getThemePalettes()
 {
-    static const std::array<ThemePalette, 16> palettes { {
+    static const std::array<ThemePalette, 18> palettes { {
         { "Electric Blue",
           C (0xff0a0a0c), C (0xff121214), C (0xff17171a), C (0xff26262b),
           C (0xfff2f2f4), C (0xff8a8a90), C (0xff55555a),
@@ -179,6 +184,11 @@ inline const std::array<ThemePalette, 16>& getThemePalettes()
           C (0xfff8f0ff), C (0xffc9a8e8), C (0xff7a5a94),
           C (0xffff2fd6), C (0xff9c1c94), C (0x80ff2fd6), C (0xffffe93f) },
 
+        { "Canada Eh?",
+          C (0xff0c0909), C (0xff160f0f), C (0xff1d1414), C (0xff342222),
+          C (0xfff5efef), C (0xff988686), C (0xff5e4f4f),
+          C (0xffe8112d), C (0xff8a0a1c), C (0x80e8112d), C (0xffffb454) },
+
         { "Daylight",
           C (0xfff4f5f7), C (0xffe9eaed), C (0xffffffff), C (0xffd5d7db),
           C (0xff16171a), C (0xff5c5f66), C (0xff8b8e94),
@@ -218,6 +228,11 @@ inline const std::array<ThemePalette, 16>& getThemePalettes()
           C (0xfff6f0fa), C (0xffece0f5), C (0xfffffbff), C (0xffe0cdf0),
           C (0xff20112f), C (0xff6e5490), C (0xffa08cc0),
           C (0xffff2fd6), C (0xff9c1c94), C (0x80ff2fd6), C (0xffc97a00), true },
+
+        { "Canada Eh? Light",
+          C (0xfffaf7f7), C (0xfff0e6e6), C (0xffffffff), C (0xffe0cccc),
+          C (0xff241414), C (0xff6e4747), C (0xffa17e7e),
+          C (0xffe8112d), C (0xff8a0a1c), C (0x80e8112d), C (0xffc97a00), true },
     } };
     return palettes;
 }
@@ -229,6 +244,7 @@ inline void applyPalette (const ThemePalette& p)
     accent = p.accent; accentDim = p.accentDim; accentGlow = p.accentGlow; warnAmber = p.warnAmber;
     kushKomaActive = juce::String (p.name).startsWith ("Kush Koma");
     acidTripActive = juce::String (p.name).startsWith ("Acid Trip");
+    canadaActive = juce::String (p.name).startsWith ("Canada");
     currentThemeIsLight = p.isLight;
 }
 

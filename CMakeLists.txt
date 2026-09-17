@@ -39,6 +39,7 @@ endif()
 
 juce_add_binary_data(ONYVerbBinaryData SOURCES
     Resources/ONYVA_Logo-white.png
+    Resources/CanadaMapleLeaf.png
 )
 
 juce_add_plugin(ONYVerb
@@ -89,6 +90,7 @@ target_sources(ONYVerb PRIVATE
     Source/UI/ThemeSwitcher.h
     Source/UI/ParticleOverlay.h
     Source/UI/LeafShape.h
+    Source/UI/BeaverShape.h
     Source/UI/EcoModeButton.h
     Source/UI/InsaneModeButton.h
 )
