@@ -4,6 +4,7 @@
 #include "Theme.h"
 #include "../Parameters.h"
 #include "../DSP/VisualizationData.h"
+#include "../DSP/SpectrumData.h"
 #include <array>
 #include <cmath>
 
@@ -15,14 +16,18 @@ namespace onyverb::ui
     band ring on" rather than gain. The curve itself is purely a function
     of the current parameter values (Size/Decay/Damping/Low+High Cut) — no
     audio data needed — smoothed so parameter changes animate rather than
-    jump. A small Dry/Wet level meter pair lives in the same panel, driven
-    by live audio via the ring buffer, so at a glance you can see both the
-    shape of the tail *and* how much of each path is actually in the mix. */
+    jump. A small Dry/Wet level meter pair, and live dry/wet frequency-
+    spectrum traces (at the same 20Hz..20kHz log positions as the T60
+    curve), live in the same panel, driven by real audio via the ring
+    buffers — so at a glance you can see the tail's shape, how much of
+    each path is in the mix, and where their actual energy sits relative
+    to the Low/High Cut curve, all on one shared frequency axis. */
 class DecayCurveDisplay final : public juce::Component, private juce::Timer
 {
 public:
-    DecayCurveDisplay (juce::AudioProcessorValueTreeState& state, dsp::VisualizationRingBuffer& ringBufferIn)
-        : apvts (state), ringBuffer (ringBufferIn)
+    DecayCurveDisplay (juce::AudioProcessorValueTreeState& state, dsp::VisualizationRingBuffer& ringBufferIn,
+                        dsp::SpectrumRingBuffer& spectrumRingIn)
+        : apvts (state), ringBuffer (ringBufferIn), spectrumRing (spectrumRingIn)
     {
         sizeParam    = apvts.getRawParameterValue (ParamIDs::size);
         decayParam   = apvts.getRawParameterValue (ParamIDs::decayTime);
@@ -61,6 +66,36 @@ public:
             g.drawHorizontalLine ((int) y, plot.getX(), plot.getRight());
         }
 
+        auto isFrozen = freezeParam != nullptr && freezeParam->load() > 0.5f;
+        auto lineColour = isFrozen ? Theme::accent.brighter (0.3f) : Theme::accent;
+
+        // Dry/wet spectra as soft filled silhouettes, drawn before (so they
+        // sit behind) the T60 curve — distinguished from it by shape/weight
+        // rather than a new hue, matching this theme system's "one accent
+        // colour" approach. Dry uses the same neutral tone as the "D" meter
+        // bar; wet is accent-tinted like the "W" bar, but faint enough that
+        // the crisp T60 line on top stays the primary read.
+        auto drawSpectrumSilhouette = [&] (const std::array<float, kNumPoints>& spectrum, juce::Colour colour, float alpha)
+        {
+            juce::Path path;
+            for (size_t i = 0; i < kNumPoints; ++i)
+            {
+                auto x = plot.getX() + plot.getWidth() * (float) i / (float) (kNumPoints - 1);
+                auto y = plot.getBottom() - spectrum[i] * plot.getHeight();
+                if (i == 0) path.startNewSubPath (x, y);
+                else        path.lineTo (x, y);
+            }
+            path.lineTo (plot.getRight(), plot.getBottom());
+            path.lineTo (plot.getX(), plot.getBottom());
+            path.closeSubPath();
+
+            g.setColour (colour.withAlpha (alpha));
+            g.fillPath (path);
+        };
+
+        drawSpectrumSilhouette (smoothedDrySpectrum, Theme::textSecondary, 0.22f);
+        drawSpectrumSilhouette (smoothedWetSpectrum, lineColour, 0.28f);
+
         juce::Path curve;
         for (size_t i = 0; i < kNumPoints; ++i)
         {
@@ -69,9 +104,6 @@ public:
             if (i == 0) curve.startNewSubPath (x, y);
             else        curve.lineTo (x, y);
         }
-
-        auto isFrozen = freezeParam != nullptr && freezeParam->load() > 0.5f;
-        auto lineColour = isFrozen ? Theme::accent.brighter (0.3f) : Theme::accent;
 
         {
             juce::Path fill = curve;
@@ -169,11 +201,23 @@ private:
         smoothedDryLevel = approach (smoothedDryLevel, snap.dryLevel);
         smoothedWetLevel = approach (smoothedWetLevel, snap.wetLevel);
 
+        // Spectra only actually update once per FFT window (~93ms), so a
+        // plain EMA here is enough to keep the trace from stepping visibly
+        // between updates without needing VU-style attack/release.
+        static const dsp::SpectrumSnapshot silentSpectrum {};
+        auto spectrumSnap = spectrumRing.popLatest (silentSpectrum);
+        for (size_t i = 0; i < kNumPoints; ++i)
+        {
+            smoothedDrySpectrum[i] += 0.25f * (spectrumSnap.dry[i] - smoothedDrySpectrum[i]);
+            smoothedWetSpectrum[i] += 0.25f * (spectrumSnap.wet[i] - smoothedWetSpectrum[i]);
+        }
+
         repaint();
     }
 
     juce::AudioProcessorValueTreeState& apvts;
     dsp::VisualizationRingBuffer& ringBuffer;
+    dsp::SpectrumRingBuffer& spectrumRing;
     std::atomic<float>* sizeParam = nullptr;
     std::atomic<float>* decayParam = nullptr;
     std::atomic<float>* dampingParam = nullptr;
@@ -185,6 +229,8 @@ private:
     std::array<float, kNumPoints> targetCurve {};
     float smoothedDryLevel = 0.0f;
     float smoothedWetLevel = 0.0f;
+    std::array<float, kNumPoints> smoothedDrySpectrum {};
+    std::array<float, kNumPoints> smoothedWetSpectrum {};
 };
 
 } // namespace onyverb::ui

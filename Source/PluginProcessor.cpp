@@ -86,6 +86,7 @@ void OnyVerbProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
 
     engine.process (buffer);
     visualizationRing.push (engine.getLastSnapshot());
+    spectrumRing.push (engine.getLastSpectrum());
 }
 
 juce::AudioProcessorEditor* OnyVerbProcessor::createEditor()

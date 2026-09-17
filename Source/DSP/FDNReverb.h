@@ -5,6 +5,7 @@
 #include "FDNTank.h"
 #include "EarlyReflections.h"
 #include "VisualizationData.h"
+#include "SpectrumData.h"
 #include <juce_audio_basics/juce_audio_basics.h>
 
 namespace onyverb::dsp
@@ -61,6 +62,8 @@ public:
 
         earlyRefl.prepare (sampleRate);
         tank.prepare (sampleRate);
+        drySpectrum.prepare (sampleRate);
+        wetSpectrum.prepare (sampleRate);
 
         inputGainSm.setTimeConstant (4.0f);
         outputGainSm.setTimeConstant (4.0f);
@@ -94,6 +97,8 @@ public:
                 stage.reset();
         earlyRefl.reset();
         tank.reset();
+        drySpectrum.reset();
+        wetSpectrum.reset();
     }
 
     void setMode (ReverbMode mode)
@@ -255,7 +260,13 @@ public:
             sumTail2 += (double) (wetL * wetL + wetR * wetR) * 0.5;
             sumDry2 += (double) (dryOutL * dryOutL + dryOutR * dryOutR) * 0.5;
             sumWet2 += (double) (wetOutL * wetOutL + wetOutR * wetOutR) * 0.5;
+
+            drySpectrum.pushSample ((dryOutL + dryOutR) * 0.5f);
+            wetSpectrum.pushSample ((wetOutL + wetOutR) * 0.5f);
         }
+
+        lastSpectrum.dry = drySpectrum.getMagnitudes();
+        lastSpectrum.wet = wetSpectrum.getMagnitudes();
 
         auto invN = numSamples > 0 ? 1.0 / (double) numSamples : 0.0;
         lastSnapshot.outputLevel = (float) std::sqrt (juce::jmax (0.0, (sumOutL2 + sumOutR2) * 0.5 * invN));
@@ -269,6 +280,7 @@ public:
     }
 
     const VisualizationSnapshot& getLastSnapshot() const noexcept { return lastSnapshot; }
+    const SpectrumSnapshot& getLastSpectrum() const noexcept { return lastSpectrum; }
 
 private:
     const ModeTuning& modeTuningRef() const { return getModeTuning (currentMode); }
@@ -303,6 +315,8 @@ private:
     bool freeze = false;
     bool bypassed = false;
     VisualizationSnapshot lastSnapshot;
+    SpectrumAnalyzer drySpectrum, wetSpectrum;
+    SpectrumSnapshot lastSpectrum;
 
     std::array<OnePoleHighpass, 2> inputLowCut;   // low-cut = highpass
     std::array<OnePoleLowpassAbs, 2> inputHighCut; // high-cut = lowpass

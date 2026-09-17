@@ -42,8 +42,13 @@ public:
         per processed block. See Source/DSP/VisualizationData.h. */
     dsp::VisualizationRingBuffer& getVisualizationRingBuffer() noexcept { return visualizationRing; }
 
+    /** Dry/wet frequency spectra for the decay-curve panel's EQ-style
+        overlay. See Source/DSP/SpectrumData.h. */
+    dsp::SpectrumRingBuffer& getSpectrumRingBuffer() noexcept { return spectrumRing; }
+
 private:
     dsp::VisualizationRingBuffer visualizationRing;
+    dsp::SpectrumRingBuffer spectrumRing;
     static BusesProperties makeBusesProperties();
     void updateEngineParameters();
 

@@ -37,6 +37,15 @@ inline const std::vector<FactoryPreset>& getFactoryPresets()
             P{ ParamIDs::earlyLevel, 0.0f }, P{ ParamIDs::dryLevel, 0.0f }, P{ ParamIDs::wetLevel, 0.577f },
             P{ ParamIDs::inputGain, 0.0f }, P{ ParamIDs::outputGain, 0.0f },
         }, "Stevie Williams" },
+
+        { "Hall - Vocal Mid's", {
+            P{ ParamIDs::mode, 1 }, P{ ParamIDs::size, 0.492f }, P{ ParamIDs::decayTime, 4.0f },
+            P{ ParamIDs::freeze, 0 }, P{ ParamIDs::preDelay, 0.0f }, P{ ParamIDs::diffusion, 0.0f },
+            P{ ParamIDs::damping, 0.4f }, P{ ParamIDs::lowCut, 307.0f }, P{ ParamIDs::highCut, 2009.0f },
+            P{ ParamIDs::width, 1.0f }, P{ ParamIDs::modDepth, 0.3f }, P{ ParamIDs::modRate, 0.35f },
+            P{ ParamIDs::earlyLevel, 0.347f }, P{ ParamIDs::dryLevel, 1.0f }, P{ ParamIDs::wetLevel, 0.29f },
+            P{ ParamIDs::inputGain, 0.0f }, P{ ParamIDs::outputGain, 0.0f },
+        }, "TheClaw" },
     };
     return presets;
 }

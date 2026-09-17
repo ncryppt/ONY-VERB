@@ -74,6 +74,8 @@ target_sources(ONYVerb PRIVATE
     Source/DSP/FDNTank.h
     Source/DSP/FDNReverb.h
     Source/DSP/VisualizationData.h
+    Source/DSP/SpectrumAnalyzer.h
+    Source/DSP/SpectrumData.h
     Source/Presets/FactoryPresets.h
     Source/UI/Theme.h
     Source/UI/OnyvaLookAndFeel.h
