@@ -46,7 +46,7 @@ public:
     {
         auto bounds = getLocalBounds().toFloat().reduced (2.0f);
 
-        Theme::dropShadowForRoundedRect (g, bounds, Theme::cornerRadius);
+        Theme::dropShadowForRoundedRect (g, bounds, Theme::cornerRadius, 0.4f);
         Theme::fillBeveledRoundedRect (g, bounds, Theme::cornerRadius, Theme::panel);
 
         auto plot = bounds.reduced (14.0f, 10.0f);
@@ -146,6 +146,23 @@ public:
 
         drawMeter (dryBar, meterResponse (smoothedDryLevel), Theme::textSecondary, "D");
         drawMeter (wetBar, meterResponse (smoothedWetLevel), lineColour, "W");
+
+        // A glass sheen on top of everything else -- a raised pane of
+        // glass reflects light in front of the curve/spectrum/meters
+        // behind it, not behind them.
+        Theme::drawGlassSheen (g, bounds, Theme::cornerRadius);
+
+        // Corner screws, as if the glass itself were physically bolted to
+        // the panel beneath it -- drawn on top of the sheen, since real
+        // fasteners sit on the surface rather than behind the glass. Each
+        // gets its own fixed slot angle so they don't all line up
+        // identically, like they were actually hand-tightened.
+        constexpr float screwRadius = 3.6f;
+        constexpr float screwInset = 9.0f;
+        Theme::drawScrew (g, { bounds.getX() + screwInset, bounds.getY() + screwInset }, screwRadius, juce::degreesToRadians (18.0f));
+        Theme::drawScrew (g, { bounds.getRight() - screwInset, bounds.getY() + screwInset }, screwRadius, juce::degreesToRadians (-32.0f));
+        Theme::drawScrew (g, { bounds.getX() + screwInset, bounds.getBottom() - screwInset }, screwRadius, juce::degreesToRadians (55.0f));
+        Theme::drawScrew (g, { bounds.getRight() - screwInset, bounds.getBottom() - screwInset }, screwRadius, juce::degreesToRadians (-8.0f));
     }
 
 private:

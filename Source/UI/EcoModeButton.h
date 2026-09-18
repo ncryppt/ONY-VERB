@@ -23,7 +23,7 @@ public:
 
         Theme::fillBeveledPill (g, bounds, getToggleState(), isMouseOverButton, isButtonDown);
 
-        auto contentColour = getToggleState() ? Theme::accent : Theme::textSecondary;
+        auto contentColour = Theme::pillContentColour (getToggleState());
         auto leafSize = bounds.getHeight() * 0.6f;
         auto leafCentre = juce::Point<float> (bounds.getX() + leafSize * 0.75f, bounds.getCentreY());
         auto leafTransform = juce::AffineTransform::rotation (juce::MathConstants<float>::pi * 0.12f).translated (leafCentre);
@@ -38,7 +38,7 @@ public:
         g.setColour (contentColour);
         g.setFont (Theme::labelFont (13.5f));
         auto textArea = bounds.withTrimmedLeft (leafSize * 1.7f).toNearestInt();
-        g.drawFittedText ("Eco", textArea, juce::Justification::centred, 1);
+        g.drawFittedText ("ECO", textArea, juce::Justification::centred, 1);
     }
 };
 

@@ -24,7 +24,7 @@ constexpr int knobsPanelPadding = 8;  // breathing room between each panel's edg
 
 // Matches the current GitHub release tag — bump this by hand alongside each
 // release until this is wired up to the actual build/CI version.
-constexpr const char* versionString = "v0.1.4";
+constexpr const char* versionString = "v0.1.5";
 
 juce::File getAdvancedStateFile()
 {
@@ -129,14 +129,16 @@ OnyVerbEditor::OnyVerbEditor (OnyVerbProcessor& p)
     addAndMakeVisible (advancedToggle);
     advancedToggle.onClick = [this] { setAdvancedVisible (! advancedExpanded, true); };
 
-    madeWithLoveLabel.setText (juce::String::fromUTF8 ("Made with \xe2\x99\xa5 in Qu" "\xc3\xa9" "bec City"), juce::dontSendNotification);
+    // Written pre-uppercased (rather than via .toUpperCase()) since that
+    // was leaving the accented E in "QUÉBEC" as a lowercase é.
+    madeWithLoveLabel.setText (juce::String::fromUTF8 ("MADE WITH \xe2\x99\xa5 IN QU" "\xc3\x89" "BEC CITY"), juce::dontSendNotification);
     madeWithLoveLabel.setJustificationType (juce::Justification::centred);
     madeWithLoveLabel.setFont (ui::Theme::labelFont (11.0f));
     madeWithLoveLabel.setColour (juce::Label::textColourId, ui::Theme::textDim);
     madeWithLoveLabel.setInterceptsMouseClicks (false, false);
     addAndMakeVisible (madeWithLoveLabel);
 
-    developedByLabel.setText ("Developed by On Y Va Records", juce::dontSendNotification);
+    developedByLabel.setText ("DEVELOPED BY ON Y VA RECORDS", juce::dontSendNotification);
     developedByLabel.setJustificationType (juce::Justification::centred);
     developedByLabel.setFont (ui::Theme::labelFont (11.0f));
     developedByLabel.setColour (juce::Label::textColourId, ui::Theme::textDim);

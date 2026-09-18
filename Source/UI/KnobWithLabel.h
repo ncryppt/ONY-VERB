@@ -22,7 +22,7 @@ public:
         slider.setTextBoxStyle (juce::Slider::NoTextBox, true, 0, 0);
         addAndMakeVisible (slider);
 
-        nameLabel.setText (displayName, juce::dontSendNotification);
+        nameLabel.setText (displayName.toUpperCase(), juce::dontSendNotification);
         nameLabel.setJustificationType (juce::Justification::centred);
         nameLabel.setColour (juce::Label::textColourId, Theme::textSecondary);
         nameLabel.setFont (Theme::labelFont (emphasized ? 13.5f : 11.0f));
@@ -90,7 +90,7 @@ public:
     {
         addAndMakeVisible (slider);
 
-        nameLabel.setText (displayName, juce::dontSendNotification);
+        nameLabel.setText (displayName.toUpperCase(), juce::dontSendNotification);
         nameLabel.setJustificationType (juce::Justification::centredLeft);
         nameLabel.setColour (juce::Label::textColourId, Theme::textSecondary);
         nameLabel.setFont (Theme::labelFont (11.5f));
@@ -153,7 +153,7 @@ public:
     {
         addAndMakeVisible (slider);
 
-        nameLabel.setText (displayName, juce::dontSendNotification);
+        nameLabel.setText (displayName.toUpperCase(), juce::dontSendNotification);
         nameLabel.setJustificationType (juce::Justification::centred);
         nameLabel.setColour (juce::Label::textColourId, Theme::textSecondary);
         nameLabel.setFont (Theme::labelFont (10.5f));

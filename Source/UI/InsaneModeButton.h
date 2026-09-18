@@ -40,7 +40,7 @@ public:
 
         Theme::fillBeveledPill (g, bounds, getToggleState(), isMouseOverButton, isButtonDown);
 
-        auto contentColour = getToggleState() ? Theme::accent : Theme::textSecondary;
+        auto contentColour = Theme::pillContentColour (getToggleState());
         auto boltSize = bounds.getHeight() * 0.7f;
         auto boltCentre = juce::Point<float> (bounds.getX() + boltSize * 0.6f, bounds.getCentreY());
 
@@ -49,7 +49,7 @@ public:
 
         g.setFont (Theme::labelFont (13.5f));
         auto textArea = bounds.withTrimmedLeft (boltSize * 1.35f).toNearestInt();
-        g.drawFittedText ("Insane", textArea, juce::Justification::centred, 1);
+        g.drawFittedText ("INSANE", textArea, juce::Justification::centred, 1);
     }
 };
 

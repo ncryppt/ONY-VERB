@@ -2,6 +2,7 @@
 
 #include <juce_graphics/juce_graphics.h>
 #include <array>
+#include <cmath>
 
 namespace onyverb::ui::Theme
 {
@@ -50,8 +51,23 @@ inline bool currentThemeIsLight = false;
 
 inline juce::Colour withAlpha (juce::Colour c, float a) { return c.withAlpha (a); }
 
-inline juce::Font titleFont (float size)  { return juce::Font (juce::FontOptions (size, juce::Font::bold)); }
-inline juce::Font labelFont (float size)  { return juce::Font (juce::FontOptions (size, juce::Font::plain)); }
+// A geometric, wide-tracked sans rather than the plain system default — the
+// "premium hardware label" look (paired with uppercase text at each call
+// site, since a font alone doesn't get there). "Avenir Next" ships on macOS;
+// elsewhere this quietly falls back to the platform default, which still
+// picks up the kerning. Doesn't touch the knob/slider value chips, which
+// render their own monospace LCD font regardless of what's set here.
+inline juce::Font titleFont (float size)
+{
+    return juce::Font (juce::FontOptions().withName ("Avenir Next").withStyle ("Bold").withHeight (size))
+        .withExtraKerningFactor (0.05f);
+}
+
+inline juce::Font labelFont (float size)
+{
+    return juce::Font (juce::FontOptions().withName ("Avenir Next").withStyle ("Regular").withHeight (size))
+        .withExtraKerningFactor (0.06f);
+}
 
 constexpr float cornerRadius = 10.0f;
 
@@ -99,21 +115,183 @@ inline void fillBeveledRoundedRect (juce::Graphics& g, juce::Rectangle<float> bo
     g.strokePath (outline, juce::PathStrokeType (1.2f));
 }
 
+/** A soft diagonal gloss streak swept across a shape — the cue that reads
+    as "there's a pane of glass in front of this" rather than just a raised
+    panel. Meant to be drawn last, on top of whatever content the glass
+    sits over, since a real glass cover reflects light in front of the
+    display behind it rather than behind it. Clipped to the shape's own
+    rounded-rect bounds so it never spills past the panel's edge. */
+inline void drawGlassSheen (juce::Graphics& g, juce::Rectangle<float> bounds, float radius)
+{
+    juce::Path clip;
+    clip.addRoundedRectangle (bounds, radius);
+    juce::Graphics::ScopedSaveState state (g);
+    g.reduceClipRegion (clip);
+
+    constexpr float angleDeg = -24.0f;
+    auto angle = juce::degreesToRadians (angleDeg);
+    juce::Point<float> dir (std::cos (angle), std::sin (angle));
+    juce::Point<float> perp (-dir.y, dir.x);
+
+    auto centre = bounds.getCentre().translated (0.0f, -bounds.getHeight() * 0.14f);
+    auto halfLen = bounds.getWidth() + bounds.getHeight();
+    auto halfWidth = bounds.getHeight() * 0.34f;
+
+    juce::Path band;
+    band.startNewSubPath (centre - dir * halfLen - perp * halfWidth);
+    band.lineTo (centre + dir * halfLen - perp * halfWidth);
+    band.lineTo (centre + dir * halfLen + perp * halfWidth);
+    band.lineTo (centre - dir * halfLen + perp * halfWidth);
+    band.closeSubPath();
+
+    auto edge1 = centre - perp * halfWidth;
+    auto edge2 = centre + perp * halfWidth;
+    juce::ColourGradient sheenGrad (juce::Colours::white.withAlpha (0.0f), edge1.x, edge1.y,
+                                      juce::Colours::white.withAlpha (0.0f), edge2.x, edge2.y, false);
+    sheenGrad.addColour (0.5, juce::Colours::white.withAlpha (currentThemeIsLight ? 0.26f : 0.14f));
+    g.setGradientFill (sheenGrad);
+    g.fillPath (band);
+}
+
+/** A small metal flat-head screw — a fixed silvery gradient rather than a
+    theme colour, since a real fastener's metal doesn't repaint itself to
+    match the panel around it. `slotAngle` lets each call site give its
+    screw a slightly different, fixed tilt (like they were actually
+    hand-tightened) rather than every one lining up identically. */
+inline void drawScrew (juce::Graphics& g, juce::Point<float> centre, float radius, float slotAngle)
+{
+    juce::Path head;
+    head.addEllipse (centre.x - radius, centre.y - radius, radius * 2.0f, radius * 2.0f);
+
+    juce::DropShadow shadow (juce::Colours::black.withAlpha (0.4f), (int) juce::jmax (1.0f, radius * 0.7f), { 0, 1 });
+    shadow.drawForPath (g, head);
+
+    juce::ColourGradient headGrad (juce::Colour (0xffd8d8dc), centre.x - radius, centre.y - radius,
+                                     juce::Colour (0xff5a5a60), centre.x + radius, centre.y + radius, false);
+    g.setGradientFill (headGrad);
+    g.fillPath (head);
+
+    g.setColour (juce::Colours::black.withAlpha (0.4f));
+    g.drawEllipse (centre.x - radius, centre.y - radius, radius * 2.0f, radius * 2.0f, radius * 0.12f);
+
+    juce::Path slot;
+    auto slotLen = radius * 1.3f;
+    slot.startNewSubPath (-slotLen * 0.5f, 0.0f);
+    slot.lineTo (slotLen * 0.5f, 0.0f);
+    g.setColour (juce::Colours::black.withAlpha (0.55f));
+    g.strokePath (slot, juce::PathStrokeType (radius * 0.3f), juce::AffineTransform::rotation (slotAngle).translated (centre));
+}
+
+/** Text/icon colour for content drawn on top of a pill (see
+    fillBeveledPill): when toggled, the pill is now a solid saturated
+    accent fill, so accent-coloured content would vanish into it — this
+    picks black or white by the accent's own perceived brightness instead,
+    so it reads against every theme's particular hue. Untoggled pills keep
+    reading as plain secondary text on the flat background. */
+inline juce::Colour pillContentColour (bool toggled)
+{
+    if (! toggled)
+        return textSecondary;
+    return accent.getPerceivedBrightness() > 0.6f ? juce::Colours::black : juce::Colours::white;
+}
+
 /** The full treatment for a pill-shaped button/toggle: drop shadow, beveled
     fill (tinted with the accent when toggled on, panelRaised otherwise),
     and a toggle-state border on top. Centralised here since several custom
     button classes (and the shared LookAndFeel) were each drawing their own
-    slightly-diverging copy of this. */
+    slightly-diverging copy of this.
+
+    The toggled-on state reads as a real raised physical button rather than
+    a faint accent tint on a flat pill: two stacked shadows (a soft ambient
+    one plus a tighter "contact" shadow right at its base) so it visibly
+    sits proud of the surrounding bar, a strongly convex top-lit fill, a
+    specular gloss band near the top, and an embossed edge — a bright
+    highlight tracing the top of the rim, a dark one tracing the bottom —
+    the way a real backlit plastic keycap catches light on one edge and
+    casts a shadow on the other. */
 inline void fillBeveledPill (juce::Graphics& g, juce::Rectangle<float> bounds, bool toggled, bool hovered, bool pressed)
 {
     auto radius = bounds.getHeight() * 0.5f;
 
-    dropShadowForRoundedRect (g, bounds, radius);
-    fillBeveledRoundedRect (g, bounds, radius,
-        toggled ? accent.withAlpha (0.16f) : (hovered ? panelRaised.brighter (0.05f) : panelRaised));
+    if (toggled)
+    {
+        {
+            // A caster inset by the pill's own corner radius on each side
+            // — not the full pill width — so its blur, however far it
+            // spreads, starts from well inside the rounded ends and can
+            // never poke out past them. (A caster matching the pill's
+            // outline still traces each bottom corner's curve; a plain
+            // full-width rectangle is actually wider than the pill's own
+            // silhouette right at the rounded ends, since a stadium shape
+            // narrows toward each tip — either one pokes out visibly.)
+            juce::Graphics::ScopedSaveState clipState (g);
+            juce::Rectangle<float> shadowClip (bounds.getX(), bounds.getY() - 6.0f, bounds.getWidth(), bounds.getHeight() + 16.0f);
+            g.reduceClipRegion (shadowClip.toNearestInt());
 
-    g.setColour (toggled ? accent : hairline);
-    g.drawRoundedRectangle (bounds, radius, toggled ? 1.4f : 1.0f);
+            juce::Path caster;
+            caster.addRectangle (bounds.reduced (radius, 0.0f));
+
+            juce::DropShadow ambient (juce::Colours::black.withAlpha (currentThemeIsLight ? 0.10f : 0.45f), 8, { 0, 2 });
+            ambient.drawForPath (g, caster);
+
+            juce::DropShadow contactShadow (juce::Colours::black.withAlpha (currentThemeIsLight ? 0.10f : 0.4f), 3, { 0, 1 });
+            contactShadow.drawForPath (g, caster);
+        }
+
+        juce::ColourGradient surface (accent.brighter (0.32f), bounds.getX(), bounds.getY(),
+                                        accent.darker (0.32f), bounds.getX(), bounds.getBottom(), false);
+        g.setGradientFill (surface);
+        g.fillRoundedRectangle (bounds, radius);
+
+        {
+            juce::Path pill;
+            pill.addRoundedRectangle (bounds, radius);
+            juce::Graphics::ScopedSaveState state (g);
+            g.reduceClipRegion (pill);
+
+            auto highlight = bounds.withHeight (bounds.getHeight() * 0.5f).reduced (bounds.getWidth() * 0.08f, 0.0f);
+            juce::ColourGradient gloss (juce::Colours::white.withAlpha (0.4f), highlight.getCentreX(), highlight.getY(),
+                                          juce::Colours::white.withAlpha (0.0f), highlight.getCentreX(), highlight.getBottom(), false);
+            g.setGradientFill (gloss);
+            g.fillRoundedRectangle (highlight, radius);
+        }
+
+        juce::Path outline;
+        outline.addRoundedRectangle (bounds, radius);
+
+        {
+            juce::Graphics::ScopedSaveState state (g);
+            juce::Rectangle<float> topClip (bounds.getX() - 2.0f, bounds.getY() - 2.0f, bounds.getWidth() + 4.0f, bounds.getHeight() * 0.55f);
+            g.reduceClipRegion (topClip.toNearestInt());
+            g.setColour (juce::Colours::white.withAlpha (0.6f));
+            g.strokePath (outline, juce::PathStrokeType (1.4f));
+        }
+        if (! currentThemeIsLight)
+        {
+            // This crisp stroke traces the bottom of the rim including the
+            // two bottom rounded corners — on a light panel that reads as
+            // a hard dark smudge right at those corners no matter how far
+            // its alpha is dampened, so light themes skip it outright and
+            // rely on the darker-at-bottom fill gradient and border for
+            // definition instead.
+            juce::Graphics::ScopedSaveState state (g);
+            juce::Rectangle<float> bottomClip (bounds.getX() - 2.0f, bounds.getY() + bounds.getHeight() * 0.45f, bounds.getWidth() + 4.0f, bounds.getHeight() * 0.55f + 2.0f);
+            g.reduceClipRegion (bottomClip.toNearestInt());
+            g.setColour (juce::Colours::black.withAlpha (0.45f));
+            g.strokePath (outline, juce::PathStrokeType (1.4f));
+        }
+
+        g.setColour (accent.darker (0.4f));
+        g.drawRoundedRectangle (bounds, radius, 1.0f);
+    }
+    else
+    {
+        dropShadowForRoundedRect (g, bounds, radius);
+        fillBeveledRoundedRect (g, bounds, radius, hovered ? panelRaised.brighter (0.05f) : panelRaised);
+
+        g.setColour (hairline);
+        g.drawRoundedRectangle (bounds, radius, 1.0f);
+    }
 
     if (pressed)
     {

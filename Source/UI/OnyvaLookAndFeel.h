@@ -71,21 +71,48 @@ public:
             }
         }
 
-        // Knob body: a matte, textured finish rather than a glossy sphere —
-        // a near-flat tone with only gentle top-lit shading, plus a faint
-        // grain, instead of a strong directional gradient and a glossy
-        // specular highlight.
+        // Knob body: a matte, textured finish rather than a glossy sphere,
+        // shaped to read as genuinely concave — not via a smooth vignette
+        // (which just reads as "a shadow on top" rather than a dip), but
+        // the classic inset-shadow/inset-highlight pair: a dark crescent
+        // falling inward from the rim on one side, a light one falling
+        // inward from the opposite side, as if one wall of the dish sits
+        // in shadow and the other catches the light.
         auto faceRadius = radius * 0.72f;
 
         g.setColour (juce::Colours::black.withAlpha (0.5f));
         g.fillEllipse (centre.x - faceRadius, centre.y - faceRadius + faceRadius * 0.12f, faceRadius * 2.0f, faceRadius * 2.0f);
 
-        juce::ColourGradient faceGrad (Theme::panelRaised.brighter (0.05f), centre.x, centre.y - faceRadius,
-                                        Theme::panel.darker (0.1f), centre.x, centre.y + faceRadius, false);
-        g.setGradientFill (faceGrad);
-        g.fillEllipse (centre.x - faceRadius, centre.y - faceRadius, faceRadius * 2.0f, faceRadius * 2.0f);
-
         auto faceBounds = juce::Rectangle<float> (faceRadius * 2.0f, faceRadius * 2.0f).withCentre (centre);
+        juce::Path faceCircle;
+        faceCircle.addEllipse (faceBounds);
+
+        g.setColour (Theme::panelRaised.brighter (0.02f));
+        g.fillPath (faceCircle);
+
+        {
+            juce::Graphics::ScopedSaveState state (g);
+            g.reduceClipRegion (faceCircle);
+
+            auto casterOffset = faceRadius * 0.85f;
+
+            // Shadow caster sits just outside the face toward the bottom
+            // right; clipped to the face, only the blurred edge that falls
+            // inward from that side of the rim is visible.
+            juce::Path shadowCaster;
+            shadowCaster.addEllipse (faceBounds.translated (casterOffset, casterOffset));
+            juce::DropShadow innerShadow (juce::Colours::black.withAlpha (Theme::currentThemeIsLight ? 0.055f : 0.32f), (int) (faceRadius * 0.6f), {});
+            innerShadow.drawForPath (g, shadowCaster);
+
+            // Highlight caster sits just outside the face toward the top
+            // left — the near wall catching the light — using the same
+            // inset technique with a light "shadow" instead of a dark one.
+            juce::Path highlightCaster;
+            highlightCaster.addEllipse (faceBounds.translated (-casterOffset, -casterOffset));
+            juce::DropShadow innerHighlight (juce::Colours::white.withAlpha (Theme::currentThemeIsLight ? 0.07f : 0.14f), (int) (faceRadius * 0.55f), {});
+            innerHighlight.drawForPath (g, highlightCaster);
+        }
+
         stampGrain (g, [&] (juce::Path& p) { p.addEllipse (faceBounds); }, faceBounds);
 
         g.setColour (Theme::hairline);
@@ -241,12 +268,23 @@ public:
 
     void drawButtonText (juce::Graphics& g, juce::TextButton& button, bool, bool) override
     {
-        g.setColour (button.getToggleState() ? Theme::accent : Theme::textSecondary);
+        auto toggled = button.getToggleState();
+        auto isPill = button.getProperties().contains ("pill");
+
+        g.setColour (isPill ? Theme::pillContentColour (toggled) : (toggled ? Theme::accent : Theme::textSecondary));
         g.setFont (Theme::labelFont (13.5f));
-        g.drawFittedText (button.getButtonText(), button.getLocalBounds(), juce::Justification::centred, 1);
+        g.drawFittedText (button.getButtonText().toUpperCase(), button.getLocalBounds(), juce::Justification::centred, 1);
     }
 
     juce::Font getLabelFont (juce::Label&) override { return Theme::labelFont (13.0f); }
+
+    /** The theme switcher and preset bar are plain juce::ComboBoxes — these
+        two are what control their closed-box text and their popup menu
+        list (including presets' pack section headings), so both need
+        overriding explicitly to pick up the same font as everything else
+        rather than JUCE's own default. */
+    juce::Font getComboBoxFont (juce::ComboBox&) override { return Theme::labelFont (13.0f); }
+    juce::Font getPopupMenuFont() override { return Theme::labelFont (13.0f); }
 
     /** Value readouts (knobs, the Character/Decay sliders, the gain rails)
         opt into this via a "lcd" component property instead of the default
