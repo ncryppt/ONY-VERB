@@ -24,7 +24,7 @@ constexpr int knobsPanelPadding = 8;  // breathing room between each panel's edg
 
 // Matches the current GitHub release tag — bump this by hand alongside each
 // release until this is wired up to the actual build/CI version.
-constexpr const char* versionString = "v0.1.5";
+constexpr const char* versionString = "v0.1.6";
 
 juce::File getAdvancedStateFile()
 {
@@ -268,6 +268,7 @@ void OnyVerbEditor::resized()
     modePills.setBounds (b.removeFromTop (modePillHeight).reduced (12, 3));
     decayCurve.setBounds (b.removeFromTop (decayCurveHeight).reduced (10, 6));
 
+    b.removeFromBottom (8); // breathing room below the last footer line, off the window edge
     auto footerArea = b.removeFromBottom (footerHeight);
     constexpr int footerLineGap = 4;
     auto footerLineHeight = (footerHeight - footerLineGap * 2) / 3;
@@ -301,7 +302,7 @@ void OnyVerbEditor::resized()
     auto knobsHeight = juce::jmin (rowsHeight, juce::jmax (0, centreArea.getHeight() - minOrbHeight));
     auto knobsArea = centreArea.removeFromBottom (knobsHeight);
 
-    auto orbArea = centreArea;
+    auto orbArea = centreArea.reduced (0, 14); // keeps the orb's glow/pulses from reaching under the graph and knob panels
     auto orbSize = juce::jmax (40, juce::jmin (orbArea.getWidth(), orbArea.getHeight()));
     orb.setBounds (orbArea.withSizeKeepingCentre (orbSize, orbSize));
     particleOverlay.setOrbGeometry (orb.getBounds().toFloat().getCentre(), (float) orbSize * 0.5f * 0.6f);

@@ -38,7 +38,7 @@ public:
     {
         if (logoImage.isValid())
         {
-            auto logoBounds = getLocalBounds().removeFromLeft (logoArea).toFloat().reduced (0, 10.0f);
+            auto logoBounds = getLocalBounds().removeFromLeft (logoArea).toFloat().reduced (0, 6.0f);
             logoBounds.removeFromLeft (logoLeftMargin); // keep the mark off the window edge
             juce::RectanglePlacement placement (juce::RectanglePlacement::xLeft | juce::RectanglePlacement::yMid);
             auto targetRect = logoBounds.withWidth (juce::jmin (logoBounds.getWidth(), logoBounds.getHeight() * (float) logoImage.getWidth() / (float) logoImage.getHeight()));
