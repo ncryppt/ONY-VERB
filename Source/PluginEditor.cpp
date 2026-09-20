@@ -14,7 +14,8 @@ constexpr int railWidth = 56;
 constexpr int diffusionHeight = 46;
 constexpr int sliderGap = 12;
 constexpr int featuredRowHeight = 148;
-constexpr int knobRowHeight = 92;
+constexpr int knobRowHeight = 116;
+constexpr int knobRowBHeight = 94;   // the Advanced row is deliberately a step smaller than the row above it
 constexpr int correlationWidth = 90;
 constexpr int correlationHeight = 34;
 constexpr int advancedToggleHeight = 24;
@@ -24,7 +25,7 @@ constexpr int knobsPanelPadding = 8;  // breathing room between each panel's edg
 
 // Matches the current GitHub release tag — bump this by hand alongside each
 // release until this is wired up to the actual build/CI version.
-constexpr const char* versionString = "v0.1.6";
+constexpr const char* versionString = "v0.1.7";
 
 juce::File getAdvancedStateFile()
 {
@@ -87,9 +88,8 @@ void saveEcoState (bool enabled)
 }
 }
 
-OnyVerbEditor::OnyVerbEditor (OnyVerbProcessor& p)
-    : juce::AudioProcessorEditor (p),
-      onyProcessor (p),
+OnyVerbContent::OnyVerbContent (OnyVerbProcessor& p)
+    : onyProcessor (p),
       header (p.apvts),
       presetBar (p.apvts),
       modePills (p.apvts),
@@ -193,17 +193,15 @@ OnyVerbEditor::OnyVerbEditor (OnyVerbProcessor& p)
         for (auto* knob : *row)
             knob->wireParticles (particleOverlay);
 
-    setResizable (true, true);
-    setResizeLimits (760, 560, 1600, 1200);
-    setSize (960, 972);
+    setSize (OnyVerbEditor::designWidth, OnyVerbEditor::designHeight);
 }
 
-OnyVerbEditor::~OnyVerbEditor()
+OnyVerbContent::~OnyVerbContent()
 {
     setLookAndFeel (nullptr);
 }
 
-void OnyVerbEditor::buildKnobRow (juce::OwnedArray<ui::KnobWithLabel>& row,
+void OnyVerbContent::buildKnobRow (juce::OwnedArray<ui::KnobWithLabel>& row,
                                    std::initializer_list<std::pair<const char*, const char*>> params,
                                    bool emphasized)
 {
@@ -214,7 +212,7 @@ void OnyVerbEditor::buildKnobRow (juce::OwnedArray<ui::KnobWithLabel>& row,
     }
 }
 
-void OnyVerbEditor::paint (juce::Graphics& g)
+void OnyVerbContent::paint (juce::Graphics& g)
 {
     g.fillAll (ui::Theme::background);
 
@@ -242,7 +240,7 @@ void OnyVerbEditor::paint (juce::Graphics& g)
         ui::Theme::fillIndentedRoundedRect (g, knobsPanelBounds.toFloat().reduced (2.0f), 14.0f);
 }
 
-void OnyVerbEditor::resized()
+void OnyVerbContent::resized()
 {
     particleOverlay.setBounds (getLocalBounds());
 
@@ -281,7 +279,7 @@ void OnyVerbEditor::resized()
     b.removeFromBottom (10); // breathing room between the last knob row and the footer text
 
     auto rowsHeight = featuredRowHeight + knobRowHeight + advancedToggleHeight
-                     + (advancedExpanded ? knobRowHeight : 0) + diffusionHeight * 2 + sliderGap
+                     + (advancedExpanded ? knobRowBHeight : 0) + diffusionHeight * 2 + sliderGap
                      + knobsPanelGap * 2 + knobsPanelPadding * 6;
     auto mainArea = b.reduced (8, 4);
 
@@ -337,10 +335,10 @@ void OnyVerbEditor::resized()
     advancedToggle.setBounds (toggleRow.withSizeKeepingCentre (120, advancedToggleHeight - 4));
 
     if (advancedExpanded)
-        layoutKnobRowAligned (knobRowB, knobsContent.removeFromTop (knobRowHeight), columnWidth);
+        layoutKnobRowAligned (knobRowB, knobsContent.removeFromTop (knobRowBHeight), columnWidth);
 }
 
-void OnyVerbEditor::layoutKnobRowCentered (juce::OwnedArray<ui::KnobWithLabel>& row, juce::Rectangle<int> area, int maxSlotWidth)
+void OnyVerbContent::layoutKnobRowCentered (juce::OwnedArray<ui::KnobWithLabel>& row, juce::Rectangle<int> area, int maxSlotWidth)
 {
     if (row.isEmpty()) return;
 
@@ -353,7 +351,7 @@ void OnyVerbEditor::layoutKnobRowCentered (juce::OwnedArray<ui::KnobWithLabel>& 
         row[i]->setBounds (startX + i * w, area.getY(), w, area.getHeight());
 }
 
-void OnyVerbEditor::layoutKnobRowAligned (juce::OwnedArray<ui::KnobWithLabel>& row, juce::Rectangle<int> area, int columnWidth)
+void OnyVerbContent::layoutKnobRowAligned (juce::OwnedArray<ui::KnobWithLabel>& row, juce::Rectangle<int> area, int columnWidth)
 {
     if (row.isEmpty()) return;
 
@@ -367,7 +365,7 @@ void OnyVerbEditor::layoutKnobRowAligned (juce::OwnedArray<ui::KnobWithLabel>& r
         row[i]->setBounds (startX + i * columnWidth, area.getY(), columnWidth, area.getHeight());
 }
 
-void OnyVerbEditor::applyTheme (int index, bool save)
+void OnyVerbContent::applyTheme (int index, bool save)
 {
     auto& palettes = ui::Theme::getThemePalettes();
     if (! juce::isPositiveAndBelow (index, (int) palettes.size()))
@@ -388,7 +386,7 @@ void OnyVerbEditor::applyTheme (int index, bool save)
         ui::Theme::saveThemeIndex (index);
 }
 
-void OnyVerbEditor::refreshAllThemedComponents()
+void OnyVerbContent::refreshAllThemedComponents()
 {
     lookAndFeel.refreshColours();
 
@@ -411,7 +409,7 @@ void OnyVerbEditor::refreshAllThemedComponents()
     repaint();
 }
 
-void OnyVerbEditor::timerCallback()
+void OnyVerbContent::timerCallback()
 {
     acidHuePhase += 0.006f;
     if (acidHuePhase > 1.0f)
@@ -424,7 +422,7 @@ void OnyVerbEditor::timerCallback()
     refreshAllThemedComponents();
 }
 
-void OnyVerbEditor::setAdvancedVisible (bool visible, bool save)
+void OnyVerbContent::setAdvancedVisible (bool visible, bool save)
 {
     advancedExpanded = visible;
 
@@ -448,7 +446,7 @@ void OnyVerbEditor::setAdvancedVisible (bool visible, bool save)
         saveAdvancedState (visible);
 }
 
-void OnyVerbEditor::setInsaneMode (bool enabled, bool save)
+void OnyVerbContent::setInsaneMode (bool enabled, bool save)
 {
     insaneMode = enabled;
     insaneModeButton.setToggleState (enabled, juce::dontSendNotification);
@@ -458,7 +456,7 @@ void OnyVerbEditor::setInsaneMode (bool enabled, bool save)
         saveInsaneState (enabled);
 }
 
-void OnyVerbEditor::setEcoMode (bool enabled, bool save)
+void OnyVerbContent::setEcoMode (bool enabled, bool save)
 {
     ecoMode = enabled;
     ecoModeButton.setToggleState (enabled, juce::dontSendNotification);
@@ -475,6 +473,31 @@ void OnyVerbEditor::setEcoMode (bool enabled, bool save)
 
     if (save)
         saveEcoState (enabled);
+}
+
+OnyVerbEditor::OnyVerbEditor (OnyVerbProcessor& p)
+    : juce::AudioProcessorEditor (p),
+      content (p)
+{
+    addAndMakeVisible (content);
+
+    // Opens at ~70% of the design size so it fits a 13-inch laptop screen
+    // (with room for the host's own title bar) instead of ~970px tall.
+    constexpr double defaultScale = 0.59;
+    constexpr double minScale = 0.5, maxScale = 1.5;
+    sizeConstrainer.setFixedAspectRatio ((double) designWidth / (double) designHeight);
+    sizeConstrainer.setSizeLimits ((int) (designWidth * minScale), (int) (designHeight * minScale),
+                                   (int) (designWidth * maxScale), (int) (designHeight * maxScale));
+    setConstrainer (&sizeConstrainer);
+    setResizable (true, true);
+    setSize ((int) (designWidth * defaultScale), (int) (designHeight * defaultScale));
+}
+
+void OnyVerbEditor::resized()
+{
+    content.setBounds (0, 0, designWidth, designHeight);
+    content.setTransform (juce::AffineTransform::scale ((float) getWidth() / (float) designWidth,
+                                                       (float) getHeight() / (float) designHeight));
 }
 
 } // namespace onyverb

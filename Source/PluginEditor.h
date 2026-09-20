@@ -22,11 +22,11 @@ namespace onyverb
 /** The full custom ONY Verb editor: header/branding, preset browser, mode
     pills, the live decay-curve strip, the audio-reactive orb, gain rails,
     the Character/Diffusion slider, and the parameter knob grid. */
-class OnyVerbEditor final : public juce::AudioProcessorEditor, private juce::Timer
+class OnyVerbContent final : public juce::Component, private juce::Timer
 {
 public:
-    explicit OnyVerbEditor (OnyVerbProcessor& p);
-    ~OnyVerbEditor() override;
+    explicit OnyVerbContent (OnyVerbProcessor& p);
+    ~OnyVerbContent() override;
 
     void paint (juce::Graphics& g) override;
     void resized() override;
@@ -85,6 +85,27 @@ private:
     juce::Rectangle<int> slidersPanelBounds;
     juce::Rectangle<int> featuredPanelBounds;
     juce::Rectangle<int> knobsPanelBounds;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (OnyVerbContent)
+};
+
+/** The actual plugin window. The whole UI is laid out once at a fixed
+    design size inside OnyVerbContent, then uniformly scaled to fit
+    whatever size the window is resized to (aspect ratio locked), so every
+    row of knobs stays proportionally visible on small screens such as a
+    13-inch MacBook rather than shrinking unevenly. */
+class OnyVerbEditor final : public juce::AudioProcessorEditor
+{
+public:
+    static constexpr int designWidth = 960;
+    static constexpr int designHeight = 1190;
+
+    explicit OnyVerbEditor (OnyVerbProcessor& p);
+    void resized() override;
+
+private:
+    OnyVerbContent content;
+    juce::ComponentBoundsConstrainer sizeConstrainer;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (OnyVerbEditor)
 };
