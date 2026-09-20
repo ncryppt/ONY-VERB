@@ -2,6 +2,10 @@
 
 A hybrid algorithmic reverb plugin by **ONYVA**. Built on JUCE (CMake), targeting VST3, AU, AAX (SDK-gated), and Standalone.
 
+<p align="center">
+  <img src="docs/screenshot.png" alt="ONY Verb plugin interface" width="720">
+</p>
+
 ## Status
 
 This repo is being built in phases (see `docs/PROGRESS.md` for a running log):
