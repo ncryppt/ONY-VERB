@@ -97,7 +97,7 @@ private:
 class OnyVerbEditor final : public juce::AudioProcessorEditor
 {
 public:
-    static constexpr int designWidth = 960;
+    static constexpr int designWidth = 1200;
     static constexpr int designHeight = 1190;
 
     explicit OnyVerbEditor (OnyVerbProcessor& p);
