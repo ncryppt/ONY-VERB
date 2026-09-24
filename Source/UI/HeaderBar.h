@@ -86,7 +86,7 @@ public:
     {
         auto b = getLocalBounds();
         b.removeFromLeft (logoArea + 12);
-        b.removeFromRight (10); // keep Bypass off the window edge
+        b.removeFromRight (10 + 34 + 6); // keep Bypass off the window edge, leaving room for the settings burger at its right
 
         auto right = b.removeFromRight (90);
         bypassButton.setBounds (right.reduced (2));

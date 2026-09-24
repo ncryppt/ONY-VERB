@@ -23,10 +23,6 @@ constexpr int footerHeight = 56;
 constexpr int knobsPanelGap = 10;     // breathing room between the sliders panel and the knob-rows panel
 constexpr int knobsPanelPadding = 8;  // breathing room between each panel's edge and its own contents
 
-// Matches the current GitHub release tag — bump this by hand alongside each
-// release until this is wired up to the actual build/CI version.
-constexpr const char* versionString = "v0.1.8";
-
 juce::File getAdvancedStateFile()
 {
     return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
@@ -68,6 +64,26 @@ void saveInsaneState (bool enabled)
     file.replaceWithText (enabled ? "1" : "0");
 }
 
+juce::File getAutoUpdateCheckStateFile()
+{
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+        .getChildFile ("ONYVA").getChildFile ("ONY Verb").getChildFile ("autoupdatecheck.txt");
+}
+
+// On unless the user has switched it off.
+bool loadSavedAutoUpdateCheck()
+{
+    auto file = getAutoUpdateCheckStateFile();
+    return ! file.existsAsFile() || file.loadFileAsString().trim() != "0";
+}
+
+void saveAutoUpdateCheck (bool enabled)
+{
+    auto file = getAutoUpdateCheckStateFile();
+    file.getParentDirectory().createDirectory();
+    file.replaceWithText (enabled ? "1" : "0");
+}
+
 juce::File getEcoStateFile()
 {
     return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
@@ -99,7 +115,8 @@ OnyVerbContent::OnyVerbContent (OnyVerbProcessor& p)
       diffusionSlider (p.apvts, ParamIDs::diffusion, "Character"),
       decaySlider (p.apvts, ParamIDs::decayTime, "Decay"),
       inputFader (p.apvts, ParamIDs::inputGain, "In"),
-      outputFader (p.apvts, ParamIDs::outputGain, "Out")
+      outputFader (p.apvts, ParamIDs::outputGain, "Out"),
+      settingsPanel (loadSavedAutoUpdateCheck())
 {
     setLookAndFeel (&lookAndFeel);
 
@@ -145,7 +162,7 @@ OnyVerbContent::OnyVerbContent (OnyVerbProcessor& p)
     developedByLabel.setInterceptsMouseClicks (false, false);
     addAndMakeVisible (developedByLabel);
 
-    versionLabel.setText (versionString, juce::dontSendNotification);
+    versionLabel.setText (pluginVersion, juce::dontSendNotification);
     versionLabel.setJustificationType (juce::Justification::centred);
     versionLabel.setFont (ui::Theme::labelFont (10.0f));
     versionLabel.setColour (juce::Label::textColourId, ui::Theme::textDim);
@@ -176,7 +193,32 @@ OnyVerbContent::OnyVerbContent (OnyVerbProcessor& p)
     // Every button gets the same click-pop the orb gives its own transients
     // — wired last, once every button's real onClick is already in place,
     // since this wraps (rather than replaces) whatever was there.
+    addAndMakeVisible (settingsButton);
+    settingsButton.onClick = [this] { settingsPanel.open(); };
+
+    // Added after the particle overlay so it dims and blocks everything below.
+    addChildComponent (settingsPanel);
+    settingsPanel.onClose = [this] { settingsPanel.setVisible (false); };
+    settingsPanel.onCheckNow = [this] { runUpdateCheck(); };
+    settingsPanel.onAutoCheckChanged = [] (bool on) { saveAutoUpdateCheck (on); };
+    settingsPanel.onDownload = [this]
+    {
+        // Only ever open a GitHub release page, whatever the API returned.
+        if (latestReleaseUrl.startsWith ("https://github.com/"))
+            juce::URL (latestReleaseUrl).launchInDefaultBrowser();
+    };
+
+    updateChecker.onResult = [safe = juce::Component::SafePointer<OnyVerbContent> (this)] (const ui::UpdateChecker::Result& r)
+    {
+        if (safe != nullptr)
+            safe->handleUpdateResult (r);
+    };
+
+    if (loadSavedAutoUpdateCheck())
+        updateChecker.check (pluginVersion, latestReleaseApiUrl);
+
     ui::wireClickBurst (advancedToggle, particleOverlay);
+    ui::wireClickBurst (settingsButton, particleOverlay);
     ui::wireClickBurst (ecoModeButton, particleOverlay);
     ui::wireClickBurst (insaneModeButton, particleOverlay);
     header.forEachButton ([this] (juce::Button& b) { ui::wireClickBurst (b, particleOverlay); });
@@ -243,12 +285,17 @@ void OnyVerbContent::paint (juce::Graphics& g)
 void OnyVerbContent::resized()
 {
     particleOverlay.setBounds (getLocalBounds());
+    settingsPanel.setBounds (getLocalBounds());
 
     auto b = getLocalBounds();
     b.removeFromTop (8); // keep the header row (and Bypass button) off the window edge
 
     auto headerRow = b.removeFromTop (headerHeight);
     header.setBounds (headerRow);
+
+    // Burger sits at the far right of the header row, with Bypass to its
+    // left (HeaderBar reserves the space for it).
+    settingsButton.setBounds (headerRow.withTrimmedRight (10).removeFromRight (34).withSizeKeepingCentre (34, 34));
 
     auto headerButtons = headerRow.withSizeKeepingCentre (90 + 8 + 84, 26);
     ecoModeButton.setBounds (headerButtons.removeFromLeft (84));
@@ -422,6 +469,35 @@ void OnyVerbContent::timerCallback()
     refreshAllThemedComponents();
 }
 
+void OnyVerbContent::runUpdateCheck()
+{
+    settingsPanel.setChecking (true);
+    settingsPanel.setUpdateStatus ("Checking for updates...", false);
+    updateChecker.check (pluginVersion, latestReleaseApiUrl);
+}
+
+void OnyVerbContent::handleUpdateResult (const ui::UpdateChecker::Result& result)
+{
+    settingsPanel.setChecking (false);
+
+    switch (result.status)
+    {
+        case ui::UpdateChecker::Result::Status::updateAvailable:
+            latestReleaseUrl = result.releaseUrl;
+            settingsButton.setBadge (true);
+            settingsPanel.setUpdateStatus ("Update available: " + result.latestTag + " (you have " + pluginVersion + ")", true);
+            break;
+
+        case ui::UpdateChecker::Result::Status::upToDate:
+            settingsPanel.setUpdateStatus ("You're up to date (" + juce::String (pluginVersion) + ").", false);
+            break;
+
+        case ui::UpdateChecker::Result::Status::failed:
+            settingsPanel.setUpdateStatus ("Couldn't reach GitHub. Check your internet connection and try again.", false);
+            break;
+    }
+}
+
 void OnyVerbContent::setAdvancedVisible (bool visible, bool save)
 {
     advancedExpanded = visible;
@@ -481,10 +557,15 @@ OnyVerbEditor::OnyVerbEditor (OnyVerbProcessor& p)
 {
     addAndMakeVisible (content);
 
-    // Opens at ~70% of the design size so it fits a 13-inch laptop screen
-    // (with room for the host's own title bar) instead of ~970px tall.
-    constexpr double defaultScale = 0.59;
+    // Opens sized to the screen it's on: ~60% of the design size on a
+    // 13-inch laptop (so it fits with room for the host's title bar), scaling
+    // up on larger displays so text and knobs don't feel tiny there.
     constexpr double minScale = 0.5, maxScale = 1.5;
+    constexpr double smallestDefaultScale = 0.59, largestDefaultScale = 0.85;
+    double defaultScale = smallestDefaultScale;
+    if (auto* display = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())
+        defaultScale = juce::jlimit (smallestDefaultScale, largestDefaultScale,
+                                     display->userBounds.getHeight() * 0.82 / (double) designHeight);
     sizeConstrainer.setFixedAspectRatio ((double) designWidth / (double) designHeight);
     sizeConstrainer.setSizeLimits ((int) (designWidth * minScale), (int) (designHeight * minScale),
                                    (int) (designWidth * maxScale), (int) (designHeight * maxScale));

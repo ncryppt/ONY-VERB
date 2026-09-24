@@ -15,6 +15,10 @@
 #include "UI/ParticleOverlay.h"
 #include "UI/EcoModeButton.h"
 #include "UI/InsaneModeButton.h"
+#include "UI/BurgerButton.h"
+#include "UI/SettingsPanel.h"
+#include "UI/UpdateChecker.h"
+#include "Version.h"
 
 namespace onyverb
 {
@@ -41,6 +45,8 @@ private:
     void setInsaneMode (bool enabled, bool save);
     void setEcoMode (bool enabled, bool save);
     void refreshAllThemedComponents();
+    void runUpdateCheck();
+    void handleUpdateResult (const ui::UpdateChecker::Result& result);
 
     /** Drives the Acid Trip theme's rainbow hue-cycle — only running while
         that theme is selected (started/stopped in applyTheme()). */
@@ -67,6 +73,11 @@ private:
     juce::Label madeWithLoveLabel;
     juce::Label developedByLabel;
     juce::Label versionLabel;
+
+    ui::BurgerButton settingsButton;
+    ui::SettingsPanel settingsPanel;
+    ui::UpdateChecker updateChecker;
+    juce::String latestReleaseUrl;
 
     ui::InsaneModeButton insaneModeButton;
     bool insaneMode = false;
