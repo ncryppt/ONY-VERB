@@ -84,6 +84,41 @@ void saveAutoUpdateCheck (bool enabled)
     file.replaceWithText (enabled ? "1" : "0");
 }
 
+// The first non-NSFW theme with the same light/dark kind as `index`, or
+// `index` itself if it's already fine.
+int firstSafeThemeIndex (int index)
+{
+    auto& palettes = ui::Theme::getThemePalettes();
+    if (! juce::isPositiveAndBelow (index, (int) palettes.size()) || ! ui::Theme::isNsfwTheme (palettes[(size_t) index]))
+        return index;
+
+    for (size_t i = 0; i < palettes.size(); ++i)
+        if (palettes[i].isLight == palettes[(size_t) index].isLight && ! ui::Theme::isNsfwTheme (palettes[i]))
+            return (int) i;
+
+    return 0;
+}
+
+juce::File getHideNsfwStateFile()
+{
+    return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
+        .getChildFile ("ONYVA").getChildFile ("ONY Verb").getChildFile ("hidensfw.txt");
+}
+
+// Off unless the user has switched it on.
+bool loadSavedHideNsfw()
+{
+    auto file = getHideNsfwStateFile();
+    return file.existsAsFile() && file.loadFileAsString().trim() == "1";
+}
+
+void saveHideNsfw (bool enabled)
+{
+    auto file = getHideNsfwStateFile();
+    file.getParentDirectory().createDirectory();
+    file.replaceWithText (enabled ? "1" : "0");
+}
+
 juce::File getEcoStateFile()
 {
     return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
@@ -116,7 +151,7 @@ OnyVerbContent::OnyVerbContent (OnyVerbProcessor& p)
       decaySlider (p.apvts, ParamIDs::decayTime, "Decay"),
       inputFader (p.apvts, ParamIDs::inputGain, "In"),
       outputFader (p.apvts, ParamIDs::outputGain, "Out"),
-      settingsPanel (loadSavedAutoUpdateCheck())
+      settingsPanel (loadSavedAutoUpdateCheck(), loadSavedHideNsfw())
 {
     setLookAndFeel (&lookAndFeel);
 
@@ -173,6 +208,9 @@ OnyVerbContent::OnyVerbContent (OnyVerbProcessor& p)
 
     themeSwitcher.onThemeChanged = [this] (int index) { applyTheme (index, true); };
     auto savedThemeIndex = ui::Theme::loadSavedThemeIndex();
+    themeSwitcher.setNsfwHidden (loadSavedHideNsfw());
+    if (loadSavedHideNsfw())
+        savedThemeIndex = firstSafeThemeIndex (savedThemeIndex);
     themeSwitcher.setSelectedIndex (savedThemeIndex);
     applyTheme (savedThemeIndex, false);
 
@@ -201,6 +239,22 @@ OnyVerbContent::OnyVerbContent (OnyVerbProcessor& p)
     settingsPanel.onClose = [this] { settingsPanel.setVisible (false); };
     settingsPanel.onCheckNow = [this] { runUpdateCheck(); };
     settingsPanel.onAutoCheckChanged = [] (bool on) { saveAutoUpdateCheck (on); };
+    settingsPanel.onHideNsfwChanged = [this] (bool hide)
+    {
+        saveHideNsfw (hide);
+        themeSwitcher.setNsfwHidden (hide);
+
+        // If the theme in use is one that just got hidden, move to the
+        // first remaining theme of the same light/dark kind.
+        auto& palettes = ui::Theme::getThemePalettes();
+        auto current = themeSwitcher.getSelectedIndex();
+        if (hide && juce::isPositiveAndBelow (current, (int) palettes.size()) && ui::Theme::isNsfwTheme (palettes[(size_t) current]))
+        {
+            auto replacement = firstSafeThemeIndex (current);
+            themeSwitcher.setSelectedIndex (replacement);
+            applyTheme (replacement, true);
+        }
+    };
     settingsPanel.onDownload = [this]
     {
         // Only ever open a GitHub release page, whatever the API returned.

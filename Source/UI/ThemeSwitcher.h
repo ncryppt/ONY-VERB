@@ -15,39 +15,66 @@ class ThemeSwitcher final : public juce::Component
 public:
     ThemeSwitcher()
     {
-        auto& palettes = Theme::getThemePalettes();
-        int id = 1;
-        bool lightHeadingAdded = false;
-
-        combo.addSectionHeading ("Dark");
-        for (auto& palette : palettes)
-        {
-            if (palette.isLight && ! lightHeadingAdded)
-            {
-                combo.addSeparator();
-                combo.addSectionHeading ("Light");
-                lightHeadingAdded = true;
-            }
-            combo.addItem (palette.name, id++);
-        }
+        rebuildItems();
 
         combo.setJustificationType (juce::Justification::centred);
         combo.onChange = [this]
         {
             if (onThemeChanged)
-                onThemeChanged (combo.getSelectedItemIndex());
+                onThemeChanged (combo.getSelectedId() - 1);
         };
         addAndMakeVisible (combo);
     }
 
-    void setSelectedIndex (int index) { combo.setSelectedItemIndex (index, juce::dontSendNotification); }
+    /** Item IDs are palette index + 1, so hiding some entries never shifts
+        which palette a menu item maps to. */
+    void setSelectedIndex (int index) { combo.setSelectedId (index + 1, juce::dontSendNotification); }
+
+    int getSelectedIndex() const { return combo.getSelectedId() - 1; }
+
+    void setNsfwHidden (bool shouldHide)
+    {
+        if (nsfwHidden == shouldHide)
+            return;
+
+        nsfwHidden = shouldHide;
+        auto selectedId = combo.getSelectedId();
+        rebuildItems();
+        combo.setSelectedId (selectedId, juce::dontSendNotification);
+    }
 
     void resized() override { combo.setBounds (getLocalBounds()); }
 
     std::function<void (int)> onThemeChanged;
 
 private:
+    void rebuildItems()
+    {
+        combo.clear (juce::dontSendNotification);
+
+        auto& palettes = Theme::getThemePalettes();
+        bool lightHeadingAdded = false;
+
+        combo.addSectionHeading ("Dark");
+        for (size_t i = 0; i < palettes.size(); ++i)
+        {
+            auto& palette = palettes[i];
+
+            if (nsfwHidden && Theme::isNsfwTheme (palette))
+                continue;
+
+            if (palette.isLight && ! lightHeadingAdded)
+            {
+                combo.addSeparator();
+                combo.addSectionHeading ("Light");
+                lightHeadingAdded = true;
+            }
+            combo.addItem (palette.name, (int) i + 1);
+        }
+    }
+
     juce::ComboBox combo;
+    bool nsfwHidden = false;
 };
 
 } // namespace onyverb::ui

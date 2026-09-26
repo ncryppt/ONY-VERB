@@ -538,6 +538,15 @@ inline const std::array<ThemePalette, 18>& getThemePalettes()
     return palettes;
 }
 
+/** The novelty themes some users may not want on display (Kush Koma and
+    Acid Trip, dark and light) — hidden from the picker by the "Hide NSFW
+    themes" setting. */
+inline bool isNsfwTheme (const ThemePalette& p)
+{
+    auto name = juce::String (p.name);
+    return name.startsWith ("Kush Koma") || name.startsWith ("Acid Trip");
+}
+
 inline void applyPalette (const ThemePalette& p)
 {
     background = p.background; panel = p.panel; panelRaised = p.panelRaised; hairline = p.hairline;

@@ -42,15 +42,15 @@ class SettingsPanel final : public juce::Component
 {
 public:
     std::function<void()> onCheckNow, onDownload, onClose;
-    std::function<void (bool)> onAutoCheckChanged;
+    std::function<void (bool)> onAutoCheckChanged, onHideNsfwChanged;
 
-    explicit SettingsPanel (bool autoCheckEnabled)
+    SettingsPanel (bool autoCheckEnabled, bool hideNsfwThemes)
     {
         setWantsKeyboardFocus (true);
 
         addAndMakeVisible (closeButton);
 
-        for (auto* b : { &checkButton, &downloadButton, &autoCheckButton })
+        for (auto* b : { &checkButton, &downloadButton, &autoCheckButton, &hideNsfwButton })
         {
             b->getProperties().set ("pill", true);
             addAndMakeVisible (b);
@@ -73,6 +73,16 @@ public:
             auto on = autoCheckButton.getToggleState();
             autoCheckButton.setButtonText (on ? "On" : "Off");
             if (onAutoCheckChanged) onAutoCheckChanged (on);
+        };
+
+        hideNsfwButton.setClickingTogglesState (true);
+        hideNsfwButton.setToggleState (hideNsfwThemes, juce::dontSendNotification);
+        hideNsfwButton.setButtonText (hideNsfwThemes ? "On" : "Off");
+        hideNsfwButton.onClick = [this]
+        {
+            auto on = hideNsfwButton.getToggleState();
+            hideNsfwButton.setButtonText (on ? "On" : "Off");
+            if (onHideNsfwChanged) onHideNsfwChanged (on);
         };
 
         setVisible (false);
@@ -111,6 +121,9 @@ public:
         drawRowLabel (g, inner.removeFromTop (rowHeight), "CHECK FOR UPDATES AUTOMATICALLY");
 
         drawRule (g, inner);
+        drawRowLabel (g, inner.removeFromTop (rowHeight), "HIDE NSFW THEMES");
+
+        drawRule (g, inner);
         inner.removeFromTop (rowHeight); // the "check for updates" button row
 
         g.setColour (Theme::textSecondary);
@@ -121,13 +134,14 @@ public:
 
     void resized() override
     {
-        cardBounds = getLocalBounds().withSizeKeepingCentre (juce::jmin (getWidth() - 40, 600), rowHeight * 4 + padding * 2 - 6 + (downloadButton.isVisible() ? rowHeight : 0));
+        cardBounds = getLocalBounds().withSizeKeepingCentre (juce::jmin (getWidth() - 40, 600), rowHeight * 5 + padding * 2 - 6 + (downloadButton.isVisible() ? rowHeight : 0));
 
         auto inner = cardBounds.reduced (padding, padding);
         closeButton.setBounds (juce::Rectangle<int> (30, 30).withRightX (cardBounds.getRight() - 14).withY (cardBounds.getY() + 14));
 
         inner.removeFromTop (rowHeight - 6);                                     // title
         autoCheckButton.setBounds (inner.removeFromTop (rowHeight).removeFromRight (80).reduced (0, 8));
+        hideNsfwButton.setBounds (inner.removeFromTop (rowHeight).removeFromRight (80).reduced (0, 8));
         checkButton.setBounds (inner.removeFromTop (rowHeight).withSizeKeepingCentre (210, rowHeight - 16));
 
         // Status text takes the row below; when an update exists, the
@@ -173,7 +187,7 @@ private:
     juce::String statusText;
     juce::Rectangle<int> cardBounds;
     CloseXButton closeButton;
-    juce::TextButton checkButton, downloadButton, autoCheckButton;
+    juce::TextButton checkButton, downloadButton, autoCheckButton, hideNsfwButton;
 };
 
 } // namespace onyverb::ui
