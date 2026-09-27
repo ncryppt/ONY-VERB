@@ -21,7 +21,17 @@ namespace onyverb::ui
     curve), live in the same panel, driven by real audio via the ring
     buffers — so at a glance you can see the tail's shape, how much of
     each path is in the mix, and where their actual energy sits relative
-    to the Low/High Cut curve, all on one shared frequency axis. */
+    to the Low/High Cut curve, all on one shared frequency axis.
+
+    The Low Cut and High Cut points on the curve are draggable, Pro-Q-style
+    — each is just a handle onto that knob's real parameter (horizontal
+    drag only, sitting wherever the curve crosses that cutoff frequency)
+    rather than an independent shaping node, so dragging one moves the
+    matching knob and everything else (the knob's own value label, host
+    automation, undo) follows for free through the normal APVTS parameter.
+    The points themselves stay low-key and only appear while the pointer is
+    over the panel (or an actual drag is in progress) — the rest of the
+    time the display reads as a plain curve, not a control surface. */
 class DecayCurveDisplay final : public juce::Component, private juce::Timer
 {
 public:
@@ -36,8 +46,13 @@ public:
         highCutParam = apvts.getRawParameterValue (ParamIDs::highCut);
         freezeParam  = apvts.getRawParameterValue (ParamIDs::freeze);
 
+        lowCutRangedParam  = apvts.getParameter (ParamIDs::lowCut);
+        highCutRangedParam = apvts.getParameter (ParamIDs::highCut);
+
         for (auto& v : smoothedCurve) v = 0.0f;
         startTimerHz (30);
+
+        setWantsKeyboardFocus (false);
     }
 
     void setEcoMode (bool enabled) { startTimerHz (enabled ? 12 : 30); }
@@ -49,14 +64,12 @@ public:
         Theme::dropShadowForRoundedRect (g, bounds, Theme::cornerRadius, 0.4f);
         Theme::fillBeveledRoundedRect (g, bounds, Theme::cornerRadius, Theme::panel);
 
-        auto plot = bounds.reduced (14.0f, 10.0f);
+        auto plot = computePlotBounds();
 
         // Dry/Wet level meters carve a narrow strip off the right edge of
-        // the panel — drawn after the curve/gridlines below so they sit on
-        // top, but their area is reserved here first so the curve doesn't
-        // stretch underneath them.
-        auto meterStrip = plot.removeFromRight (26.0f);
-        plot.removeFromRight (8.0f);
+        // the panel — reserved by computePlotBounds() so the curve doesn't
+        // stretch underneath them; drawn separately below.
+        auto meterStrip = bounds.reduced (14.0f, 10.0f).removeFromRight (26.0f);
 
         // Faint horizontal gridlines.
         g.setColour (Theme::hairline.withAlpha (0.5f));
@@ -122,6 +135,8 @@ public:
         g.drawText ("20Hz", (int) plot.getX(), (int) plot.getBottom() + 1, 50, 10, juce::Justification::left);
         g.drawText ("20kHz", (int) plot.getRight() - 50, (int) plot.getBottom() + 1, 50, 10, juce::Justification::right);
 
+        drawHandles (g, plot, lineColour);
+
         // Dry/Wet level meters — live audio, not parameter-derived like the
         // curve above, so together they show both the shape of the tail and
         // how much of each path is actually reaching the output right now.
@@ -165,8 +180,58 @@ public:
         Theme::drawScrew (g, { bounds.getRight() - screwInset, bounds.getBottom() - screwInset }, screwRadius, juce::degreesToRadians (-8.0f));
     }
 
+    void mouseEnter (const juce::MouseEvent&) override
+    {
+        setPointerInside (true);
+    }
+
+    void mouseMove (const juce::MouseEvent& e) override
+    {
+        setHoveredHandle (nearestHandle (e.position, computeHandlePositions (computePlotBounds())));
+    }
+
+    void mouseExit (const juce::MouseEvent&) override
+    {
+        setPointerInside (false);
+        setHoveredHandle (-1);
+    }
+
+    void mouseDown (const juce::MouseEvent& e) override
+    {
+        activeHandle = nearestHandle (e.position, computeHandlePositions (computePlotBounds()));
+
+        if (activeHandle < 0)
+            return;
+
+        if (auto* p = paramForHandle (activeHandle))
+            p->beginChangeGesture();
+
+        updateFromDrag (e.position, computePlotBounds());
+    }
+
+    void mouseDrag (const juce::MouseEvent& e) override
+    {
+        if (activeHandle >= 0)
+            updateFromDrag (e.position, computePlotBounds());
+    }
+
+    void mouseUp (const juce::MouseEvent&) override
+    {
+        if (activeHandle < 0)
+            return;
+
+        if (auto* p = paramForHandle (activeHandle))
+            p->endChangeGesture();
+
+        activeHandle = -1;
+        setHoveredHandle (-1);
+    }
+
 private:
     static constexpr size_t kNumPoints = 48;
+
+    // Handle indices, in the order computeHandlePositions() fills them.
+    enum HandleIndex { handleLowCut = 0, handleHighCut, handleCount };
 
     // Perceptual-ish scaling so a typical program-level RMS reads usefully
     // on the meter instead of sitting near the bottom — this is a UI nicety,
@@ -179,32 +244,179 @@ private:
         return 20.0f * std::pow (1000.0f, t); // 20 Hz .. 20 kHz, log-spaced
     }
 
+    // Continuous versions of freqAt(), for the draggable handles (which
+    // don't land on one of the kNumPoints sample indices).
+    static float freqAtT (float t) { return 20.0f * std::pow (1000.0f, t); }
+    static float tAtFreq (float f) { return std::log (juce::jmax (20.0f, f) / 20.0f) / std::log (1000.0f); }
+
+    static float freqToX (float f, juce::Rectangle<float> plot) { return plot.getX() + tAtFreq (f) * plot.getWidth(); }
+    static float xToFreq (float x, juce::Rectangle<float> plot) { return freqAtT (juce::jlimit (0.0f, 1.0f, (x - plot.getX()) / plot.getWidth())); }
+    static float heightToY (float h, juce::Rectangle<float> plot) { return plot.getBottom() - h * plot.getHeight(); }
+    static float yToHeight (float y, juce::Rectangle<float> plot) { return juce::jlimit (0.0f, 1.0f, (plot.getBottom() - y) / plot.getHeight()); }
+
+    /** The same shape used by the drawn curve — factored out so the
+        draggable handles can read (and, via the inverse functions below,
+        write back to) exact points on it rather than only the 48 sampled
+        curve vertices. */
+    struct CurveParams { float sizeV, decayV, dampingV, lowCutV, highCutV; };
+
+    static float highShelfAt (float f) { return juce::jlimit (0.0f, 1.0f, (std::log2 (f / 1000.0f)) / 4.5f + 0.15f); }
+
+    static float computeNormalizedHeight (float f, const CurveParams& p)
+    {
+        auto sizeMul = 0.9f + p.sizeV * 0.2f;
+        auto dampingAttenuation = 1.0f / (1.0f + p.dampingV * 3.0f * highShelfAt (f));
+        auto lowCutAttenuation = f < p.lowCutV ? juce::jlimit (0.0f, 1.0f, f / juce::jmax (1.0f, p.lowCutV)) : 1.0f;
+        auto highCutAttenuation = f > p.highCutV ? juce::jlimit (0.0f, 1.0f, p.highCutV / juce::jmax (1.0f, f)) : 1.0f;
+        auto t60 = p.decayV * sizeMul * dampingAttenuation * lowCutAttenuation * highCutAttenuation;
+        return juce::jlimit (0.02f, 1.0f, std::log1p (t60) / std::log1p (60.0f));
+    }
+
+    juce::Rectangle<float> computePlotBounds() const
+    {
+        auto bounds = getLocalBounds().toFloat().reduced (2.0f);
+        auto plot = bounds.reduced (14.0f, 10.0f);
+        plot.removeFromRight (26.0f + 8.0f); // the Dry/Wet meter strip and its gap
+        return plot;
+    }
+
+    CurveParams currentParams() const
+    {
+        return { sizeParam->load(), decayParam->load(), dampingParam->load(), lowCutParam->load(), highCutParam->load() };
+    }
+
+    std::array<juce::Point<float>, handleCount> computeHandlePositions (juce::Rectangle<float> plot) const
+    {
+        auto p = currentParams();
+        std::array<juce::Point<float>, handleCount> pts;
+        pts[handleLowCut]  = { freqToX (p.lowCutV, plot),        heightToY (computeNormalizedHeight (p.lowCutV, p), plot) };
+        pts[handleHighCut] = { freqToX (p.highCutV, plot),       heightToY (computeNormalizedHeight (p.highCutV, p), plot) };
+        return pts;
+    }
+
+    static int nearestHandle (juce::Point<float> pos, const std::array<juce::Point<float>, handleCount>& pts)
+    {
+        constexpr float hitRadius = 14.0f;
+        int best = -1;
+        auto bestDist = hitRadius;
+
+        for (int i = 0; i < (int) handleCount; ++i)
+        {
+            auto d = pos.getDistanceFrom (pts[(size_t) i]);
+            if (d < bestDist) { bestDist = d; best = i; }
+        }
+
+        return best;
+    }
+
+    juce::RangedAudioParameter* paramForHandle (int handle) const
+    {
+        switch (handle)
+        {
+            case handleLowCut:  return lowCutRangedParam;
+            case handleHighCut: return highCutRangedParam;
+            default:            return nullptr;
+        }
+    }
+
+    static void setParam (juce::RangedAudioParameter* p, float actualValue)
+    {
+        if (p != nullptr)
+            p->setValueNotifyingHost (p->convertTo0to1 (actualValue));
+    }
+
+    void setHoveredHandle (int handle)
+    {
+        if (hoveredHandle == handle)
+            return;
+
+        hoveredHandle = handle;
+        setMouseCursor (handle >= 0 ? juce::MouseCursor::PointingHandCursor : juce::MouseCursor::NormalCursor);
+        repaint();
+    }
+
+    void setPointerInside (bool inside)
+    {
+        if (pointerInside == inside)
+            return;
+
+        pointerInside = inside;
+        repaint();
+    }
+
+    void updateFromDrag (juce::Point<float> pos, juce::Rectangle<float> plot)
+    {
+        auto p = currentParams();
+
+        switch (activeHandle)
+        {
+            case handleLowCut:
+            {
+                // Clamped to the Low Cut parameter's own range (20-2000Hz,
+                // see Parameters.h) as well as staying below High Cut —
+                // the x-axis spans the full 20Hz-20kHz plot, which is wider
+                // than Low Cut can actually reach.
+                auto f = xToFreq (pos.x, plot);
+                auto upperLimit = juce::jmin (2000.0f, juce::jmax (21.0f, p.highCutV * 0.9f));
+                f = juce::jlimit (20.0f, upperLimit, f);
+                setParam (lowCutRangedParam, f);
+                break;
+            }
+            case handleHighCut:
+            {
+                // Same idea, clamped to High Cut's own 200-20000Hz range.
+                auto f = xToFreq (pos.x, plot);
+                auto lowerLimit = juce::jmax (200.0f, juce::jmin (19999.0f, p.lowCutV * 1.1f));
+                f = juce::jlimit (lowerLimit, 20000.0f, f);
+                setParam (highCutRangedParam, f);
+                break;
+            }
+            default:
+                break;
+        }
+
+        repaint();
+    }
+
+    void drawHandles (juce::Graphics& g, juce::Rectangle<float> plot, juce::Colour lineColour) const
+    {
+        // Kept out of sight until there's a reason to look for them — an
+        // active drag, or the pointer sitting over the panel at all — so
+        // the display normally reads as a plain curve rather than a control
+        // surface asking to be clicked.
+        if (! pointerInside && activeHandle < 0)
+            return;
+
+        auto pts = computeHandlePositions (plot);
+
+        for (int i = 0; i < (int) handleCount; ++i)
+        {
+            auto isActive = activeHandle == i;
+            auto isHovered = hoveredHandle == i;
+            auto radius = isActive ? 4.2f : isHovered ? 3.6f : 2.4f;
+            auto centre = pts[(size_t) i];
+
+            if (isActive || isHovered)
+            {
+                g.setColour (lineColour.withAlpha (0.16f));
+                g.fillEllipse (juce::Rectangle<float> (radius * 3.0f, radius * 3.0f).withCentre (centre));
+            }
+
+            g.setColour (Theme::panel.withAlpha (0.8f));
+            g.fillEllipse (juce::Rectangle<float> (radius * 2.0f + 1.5f, radius * 2.0f + 1.5f).withCentre (centre));
+            g.setColour (lineColour.withAlpha (isActive || isHovered ? 0.9f : 0.5f));
+            g.fillEllipse (juce::Rectangle<float> (radius * 2.0f, radius * 2.0f).withCentre (centre));
+        }
+    }
+
     void timerCallback() override
     {
         if (sizeParam == nullptr) return;
 
-        auto sizeV = sizeParam->load();
-        auto decayV = decayParam->load();
-        auto dampingV = dampingParam->load();
-        auto lowCutV = lowCutParam->load();
-        auto highCutV = highCutParam->load();
-
-        auto sizeMul = 0.9f + sizeV * 0.2f;
+        auto p = currentParams();
 
         for (size_t i = 0; i < kNumPoints; ++i)
-        {
-            auto f = freqAt (i);
-            auto highShelf = juce::jlimit (0.0f, 1.0f, (std::log2 (f / 1000.0f)) / 4.5f + 0.15f);
-            auto dampingAttenuation = 1.0f / (1.0f + dampingV * 3.0f * juce::jmax (0.0f, highShelf));
-
-            auto lowCutAttenuation = f < lowCutV ? juce::jlimit (0.0f, 1.0f, f / juce::jmax (1.0f, lowCutV)) : 1.0f;
-            auto highCutAttenuation = f > highCutV ? juce::jlimit (0.0f, 1.0f, highCutV / juce::jmax (1.0f, f)) : 1.0f;
-
-            auto t60 = decayV * sizeMul * dampingAttenuation * lowCutAttenuation * highCutAttenuation;
-            auto normalised = std::log1p (t60) / std::log1p (60.0f);
-
-            targetCurve[i] = juce::jlimit (0.02f, 1.0f, normalised);
-        }
+            targetCurve[i] = computeNormalizedHeight (freqAt (i), p);
 
         for (size_t i = 0; i < kNumPoints; ++i)
             smoothedCurve[i] += 0.18f * (targetCurve[i] - smoothedCurve[i]);
@@ -241,6 +453,18 @@ private:
     std::atomic<float>* lowCutParam = nullptr;
     std::atomic<float>* highCutParam = nullptr;
     std::atomic<float>* freezeParam = nullptr;
+
+    // Real parameter objects (rather than the raw atomics above) so
+    // dragging a handle can write back through the normal
+    // begin/setValueNotifyingHost/endChangeGesture path — the same one
+    // SliderParameterAttachment uses — which keeps host automation, undo,
+    // and the knob's own slider/label all in sync for free.
+    juce::RangedAudioParameter* lowCutRangedParam = nullptr;
+    juce::RangedAudioParameter* highCutRangedParam = nullptr;
+
+    int activeHandle = -1;
+    int hoveredHandle = -1;
+    bool pointerInside = false;
 
     std::array<float, kNumPoints> smoothedCurve;
     std::array<float, kNumPoints> targetCurve {};

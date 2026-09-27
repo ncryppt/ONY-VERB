@@ -63,11 +63,35 @@ public:
         // Tracks whichever theme is active (hue and saturation both come
         // from Theme::accent) rather than a hardcoded blue, with the same
         // small live hue drift as before layered on top.
+        //
+        // Mono Slate and Graphite Light are deliberately colourless themes
+        // — their "accent" is really just a shade of grey that happens to
+        // carry a faint hue in its sRGB value (e.g. Graphite's is a hair
+        // blue). Re-rendering that at full brightness/boosted saturation,
+        // as every other (genuinely coloured) theme's accent wants, turns
+        // that faint cast into an obviously-tinted orb that doesn't match
+        // the rest of the theme. Below this threshold — well under every
+        // real colour accent, the lowest of which is Violet Dusk at ~0.5 —
+        // the orb instead takes its colour directly from Theme::accent
+        // (lightened for the core, as-is for the glow) so it reads as the
+        // same dark grey as the knob rings and curve line, rather than
+        // chasing a near-invisible hue toward full saturation.
+        constexpr float neutralAccentThreshold = 0.35f;
         auto accentHue = Theme::accent.getHue();
         auto accentSat = Theme::accent.getSaturation();
         auto hue = accentHue + brightness * 0.025f;
-        auto coreColour = juce::Colour::fromHSV (hue, juce::jlimit (0.0f, 1.0f, accentSat * 0.6f), 1.0f, 1.0f);
-        auto glowColour = juce::Colour::fromHSV (hue, juce::jlimit (0.0f, 1.0f, accentSat + 0.15f), 1.0f, 1.0f);
+
+        juce::Colour coreColour, glowColour;
+        if (accentSat < neutralAccentThreshold)
+        {
+            coreColour = Theme::accent.brighter (0.6f);
+            glowColour = Theme::accent;
+        }
+        else
+        {
+            coreColour = juce::Colour::fromHSV (hue, juce::jlimit (0.0f, 1.0f, accentSat * 0.6f), 1.0f, 1.0f);
+            glowColour = juce::Colour::fromHSV (hue, juce::jlimit (0.0f, 1.0f, accentSat * 1.35f), 1.0f, 1.0f);
+        }
 
         drawGlowAndBody (g, centre, radius, maxRadius, coreColour, glowColour, liveliness);
         drawSpecularHighlight (g, centre, radius);
