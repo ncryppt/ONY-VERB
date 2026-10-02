@@ -125,6 +125,41 @@ public:
 
     void wireParticles (ParticleOverlay& overlay) { wireDragTrickle (slider, overlay); }
 
+    /** Opts this slider into a zone cue (see Theme::SliderCueKind): the
+        track's upper stretch tints toward the cue's colour, the handle picks
+        that up as it's dragged in, and a small caption fades in beside the
+        value readout. */
+    void enableCue (Theme::SliderCueKind kind, const juce::String& caption)
+    {
+        cueKind = kind;
+        cueCaption = caption;
+        hasCue = true;
+        slider.getProperties().set ("sliderCue", (int) kind);
+        repaint();
+    }
+
+    /** Character: "this gets harsher toward the top". */
+    void enableHarshnessCue() { enableCue (Theme::SliderCueKind::harshness, "HARSHER"); }
+
+    /** Decay: "this is getting very long". */
+    void enableLengthCue() { enableCue (Theme::SliderCueKind::length, "CAVERNOUS"); }
+
+    void paint (juce::Graphics& g) override
+    {
+        if (! hasCue)
+            return;
+
+        auto amount = Theme::cueAmount (cueKind, (float) slider.valueToProportionOfLength (slider.getValue()));
+        if (amount <= 0.0f)
+            return;
+
+        auto topRow = getLocalBounds().removeFromTop (18);
+        topRow.removeFromRight (62 + 8); // clear of the value readout
+        g.setColour (Theme::cueColour (cueKind).withAlpha (amount));
+        g.setFont (Theme::labelFont (10.0f));
+        g.drawText (cueCaption, topRow, juce::Justification::centredRight);
+    }
+
 private:
     void updateValueLabel()
     {
@@ -134,12 +169,16 @@ private:
         valueLabel.setText (text, juce::dontSendNotification);
         valueLabel.getProperties().set ("lcdOn", slider.getValue() > 0.0);
         valueLabel.repaint();
+        repaint(); // the cue caption fades with the value
     }
 
     juce::Slider slider;
     juce::SliderParameterAttachment attachment;
     juce::String unitLabel;
     juce::Label nameLabel, valueLabel;
+    bool hasCue = false;
+    Theme::SliderCueKind cueKind = Theme::SliderCueKind::harshness;
+    juce::String cueCaption;
 };
 
 /** Vertical gain-trim rail for the left/right edges (Input/Output gain),

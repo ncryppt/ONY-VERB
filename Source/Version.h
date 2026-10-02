@@ -6,7 +6,7 @@ namespace onyverb
 /** Matches the current GitHub release tag — bump this by hand alongside
     each release until this is wired up to the actual build/CI version.
     The update check compares it against the latest published release. */
-constexpr const char* pluginVersion = "v0.2.1";
+constexpr const char* pluginVersion = "v0.2.2";
 
 /** Where the update check looks for the newest release. Swap this for the
     store's own version feed once the product is sold through Shopify. */

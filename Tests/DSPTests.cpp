@@ -2,6 +2,7 @@
 #include <juce_audio_basics/juce_audio_basics.h>
 #include "DSP/FDNReverb.h"
 #include "DSP/ReverbMode.h"
+#include "DecayAnalysis.h"
 #include <cmath>
 
 using namespace onyverb;
@@ -248,7 +249,111 @@ public:
     }
 };
 
+/** The Decay knob should mean what it says: with the plugin's default
+    settings, the measured RT60 around 0.5-1kHz has to land close to the set
+    time in every mode, for short and long decays alike. (It used to fall
+    further and further short as the decay got longer — a Hall set to 8s
+    measured about 2.9s — because the in-loop filters' fixed loss per pass
+    wasn't accounted for in the feedback gain.) */
+class DecayAccuracyTest final : public juce::UnitTest
+{
+public:
+    DecayAccuracyTest() : juce::UnitTest ("Measured decay time matches the Decay setting") {}
+
+    void runTest() override
+    {
+        using namespace decay_analysis;
+        const char* modeNames[] = { "Room", "Hall", "Plate", "Chamber", "Shimmer", "Ambient" };
+
+        for (int m = 0; m < (int) ReverbMode::numModes; ++m)
+        {
+            for (auto decay : { 2.0f, 6.0f })
+            {
+                beginTest (juce::String (modeNames[m]) + " at " + juce::String (decay, 0) + "s");
+
+                EngineSettings s;
+                s.mode = static_cast<ReverbMode> (m);
+                s.decaySeconds = decay;
+
+                auto ir = renderImpulseResponse (s, kSampleRate, (double) decay * 2.0 + 3.0);
+                auto t500 = measureT60 (ir, 500.0);
+                auto t1k = measureT60 (ir, 1000.0);
+                expect (t500.valid && t1k.valid, "Could not measure a decay time");
+
+                if (t500.valid && t1k.valid)
+                {
+                    auto ratio = 0.5 * (t500.seconds + t1k.seconds) / (double) decay;
+                    expect (ratio > 0.75 && ratio < 1.25,
+                            "Mid-band RT60 was " + juce::String (ratio, 2) + "x the set decay (expected 0.75-1.25x)");
+                }
+
+                // Bass is allowed to ring a little longer than the mids, as in
+                // a real room, but not wildly so.
+                auto t250 = measureT60 (ir, 250.0);
+                if (t250.valid)
+                    expect (t250.seconds / (double) decay < 1.5,
+                            "250Hz RT60 was " + juce::String (t250.seconds / (double) decay, 2) + "x the set decay");
+            }
+        }
+    }
+};
+
+/** Character (diffusion) should smear the tail, not change how loud or
+    bright it is. The diffusers used to be a Freeverb-style pseudo all-pass
+    whose gain swung with the coefficient and frequency, so turning
+    Character up made the reverb both much louder (about 19dB across the
+    knob) and harsh/metallic. */
+class CharacterLevelTest final : public juce::UnitTest
+{
+public:
+    CharacterLevelTest() : juce::UnitTest ("Character does not change the reverb's level") {}
+
+    void runTest() override
+    {
+        using namespace decay_analysis;
+        beginTest ("Wet level is the same at Character 0 and 1");
+
+        auto levelDb = [] (float character)
+        {
+            EngineSettings s;
+            s.decaySeconds = 2.0f;
+            s.diffusion = character;
+            s.earlyLevel = 0.0f;
+            auto ir = renderImpulseResponse (s, kSampleRate, 3.0);
+            double sum = 0.0;
+            for (size_t i = 0; i < ir.left.size(); ++i)
+                sum += (double) ir.left[i] * ir.left[i] + (double) ir.right[i] * ir.right[i];
+            return 10.0 * std::log10 (sum + 1.0e-20);
+        };
+
+        auto low = levelDb (0.0f);
+        auto high = levelDb (1.0f);
+        expect (std::abs (high - low) < 1.0,
+                "Level changed by " + juce::String (high - low, 2) + "dB between Character 0 and 1");
+
+        beginTest ("The diffuser chain has unity gain at every frequency");
+
+        // A true all-pass leaves the energy of a noise burst unchanged.
+        AllpassDiffuser stage;
+        stage.prepare (kSampleRate, 7.0f);
+        stage.setCoefficient (0.75f);
+
+        juce::Random rng (99);
+        double inEnergy = 0.0, outEnergy = 0.0;
+        for (int i = 0; i < 48000; ++i)
+        {
+            auto x = rng.nextFloat() * 2.0f - 1.0f;
+            auto y = stage.process (x);
+            if (i > 4800) { inEnergy += (double) x * x; outEnergy += (double) y * y; }
+        }
+        expect (std::abs (10.0 * std::log10 (outEnergy / inEnergy)) < 0.3,
+                "All-pass changed the signal energy by " + juce::String (10.0 * std::log10 (outEnergy / inEnergy), 2) + "dB");
+    }
+};
+
 static NoNaNInfTest noNaNInfTest;
+static DecayAccuracyTest decayAccuracyTest;
+static CharacterLevelTest characterLevelTest;
 static FreezeTest freezeTest;
 static NoClickOnParamJumpTest noClickTest;
 static ModeChangeStabilityTest modeChangeTest;

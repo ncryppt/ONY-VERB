@@ -44,6 +44,19 @@ private:
 class FDNReverbEngine
 {
 public:
+    /** Make-up gain for the diffuser chain. The old diffusers weren't
+        unity-gain (see AllpassDiffuser::process): each stage boosted
+        noise-like input by ~3.5dB at the default Character, so the four of
+        them lifted the signal feeding the tank by about 14dB — and by
+        18dB more as Character went from 0 to 1 (about 40dB of total boost
+        at the very top). Now that they're true all-passes (unity gain at
+        every frequency) this restores the old default level, so the tail
+        keeps the same loudness relative to the dry signal and early
+        reflections that every preset was balanced against (presets use
+        Character 0-0.25, where the old boost was 14.1-14.5dB), while
+        Character no longer changes the level at all. */
+    static constexpr float diffuserMakeupGain = 5.0f; // +14dB
+
     void prepare (double sampleRateIn, int /*maxBlockSize*/)
     {
         sampleRate = sampleRateIn;
@@ -160,7 +173,6 @@ public:
         tank.setDecayTime (decayV);
         tank.setFreeze (freeze);
         tank.setDamping (dampingV);
-        tank.setLowCutHz (lowCutV);
         tank.setHighCutHz (effectiveHighCut);
         tank.setModulation (modDepthV, modRateV);
         tank.setShimmerAmount (modeTuningRef().isShimmer ? 0.6f : 0.0f);
@@ -171,10 +183,13 @@ public:
 
         auto preDelaySamples = (float) (preDelayV * 0.001 * sampleRate);
 
-        // Floor raised from 0.35 so the tail stays reasonably smeared even
-        // with Character all the way down, instead of leaning on modulation
-        // alone to hide comb-filtering.
-        auto diffCoeff = 0.45f + diffusionV * 0.5f;
+        // Diffusion coefficient. The diffusers are true all-pass filters
+        // (see AllpassDiffuser), so this only controls how much transients
+        // are smeared in time — it can't change the level or colour the
+        // spectrum, which is what made Character sound harsh before. Kept
+        // moderate: a higher coefficient smears more but starts to ring
+        // audibly, and the floor keeps the tail smooth even at Character 0.
+        auto diffCoeff = 0.45f + diffusionV * 0.30f;
         for (auto& chain : inputDiffusers)
             for (auto& stage : chain)
                 stage.setCoefficient (diffCoeff);
@@ -212,6 +227,8 @@ public:
             auto erInL = pdL, erInR = pdR;
             for (auto& stage : inputDiffusers[0]) pdL = stage.process (pdL);
             for (auto& stage : inputDiffusers[1]) pdR = stage.process (pdR);
+            pdL *= diffuserMakeupGain;
+            pdR *= diffuserMakeupGain;
 
             float erL = 0.0f, erR = 0.0f;
             earlyRefl.process (erInL, erInR, erL, erR);

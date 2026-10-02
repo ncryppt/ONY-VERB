@@ -163,7 +163,9 @@ OnyVerbContent::OnyVerbContent (OnyVerbProcessor& p)
     addAndMakeVisible (orb);
     addAndMakeVisible (correlationMeter);
     addAndMakeVisible (diffusionSlider);
+    diffusionSlider.enableHarshnessCue();
     addAndMakeVisible (decaySlider);
+    decaySlider.enableLengthCue();
     addAndMakeVisible (inputFader);
     addAndMakeVisible (outputFader);
 

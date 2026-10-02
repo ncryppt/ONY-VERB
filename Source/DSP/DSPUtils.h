@@ -21,6 +21,8 @@ public:
         coeff = cutoffAmount;
     }
 
+    float getCoefficient() const { return coeff; }
+
     inline float process (float x) noexcept
     {
         state = x + coeff * (state - x);
@@ -102,6 +104,44 @@ private:
     float coeff = 0.0f;
     float state1 = 0.0f;
     float state2 = 0.0f;
+};
+
+/** Single one-pole low-pass stage (-6dB/octave), frequency-cutoff based —
+    used for the FDN tank's in-loop High Cut specifically, as the gentler
+    alternative to OnePoleLowpassAbs's cascaded -12dB/octave. The tank's
+    version of this filter runs once per line per sample *inside* the
+    feedback loop, so its loss compounds over every recirculation of the
+    tail (hundreds of passes over a multi-second decay) in a way a single
+    pass through the input stage never does; the steeper cascade was
+    quietly eating far more of the tail's total energy than the Decay
+    knob's own T60 gain accounted for, so the tail died out well short of
+    the set decay time. A single pole halves that per-pass loss in dB
+    terms, which is enough to let the tail actually reach its set decay
+    time while still following the High Cut knob tonally. */
+class OnePoleLowpassGentle
+{
+public:
+    void prepare (double sr) { sampleRate = sr; reset(); }
+    void reset() { state = 0.0f; }
+
+    void setCutoff (float hz)
+    {
+        hz = juce::jlimit (20.0f, (float) (sampleRate * 0.49), hz);
+        coeff = std::exp (-2.0f * juce::MathConstants<float>::pi * hz / (float) sampleRate);
+    }
+
+    float getCoefficient() const { return coeff; }
+
+    inline float process (float x) noexcept
+    {
+        state = x + coeff * (state - x);
+        return state;
+    }
+
+private:
+    double sampleRate = 44100.0;
+    float coeff = 0.0f;
+    float state = 0.0f;
 };
 
 /** Fractional-delay line with linear interpolation and optional sinusoidal
@@ -259,14 +299,24 @@ public:
 
     void setCoefficient (float g) { coeff = juce::jlimit (-0.999f, 0.999f, g); }
 
-    /** Classic Schroeder/Freeverb-style all-pass diffuser: one read + one
-        write of the internal delay line per sample, unity-magnitude response. */
+    /** Schroeder all-pass: w[n] = x[n] + g*w[n-D], y[n] = w[n-D] - g*w[n],
+        i.e. H(z) = (z^-D - g) / (1 - g*z^-D), which has exactly unity
+        magnitude at every frequency for any |g| < 1 — it only smears
+        transients in time, it doesn't colour or change the level.
+
+        This used to be the Freeverb-style variant (y = -x + w[n-D]), which
+        looks like an all-pass but isn't: its magnitude swings between
+        roughly g/(1-g) and (2+g)/(1+g) depending on frequency. Four of
+        them in a row boosted the wet signal by ~7dB at the default
+        Character and ~21dB (with a +25dB resonant peak per stage) at
+        full Character — which is what made turning Character up sound
+        harsh and metallic as well as suddenly louder. */
     inline float process (float x) noexcept
     {
         auto bufout = delayLine.readTap();
-        auto y = -x + bufout;
-        delayLine.pushSample (x + bufout * coeff);
-        return y;
+        auto w = x + coeff * bufout;
+        delayLine.pushSample (w);
+        return bufout - coeff * w;
     }
 
 private:

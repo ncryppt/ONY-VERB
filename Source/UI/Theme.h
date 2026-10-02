@@ -547,6 +547,56 @@ inline bool isNsfwTheme (const ThemePalette& p)
     return name.startsWith ("Kush Koma") || name.startsWith ("Acid Trip");
 }
 
+// ---------------------------------------------------------------------------
+// Slider "zone" cues — a tinted upper stretch of a slider's track, a matching
+// handle tint, and a small caption that fades in as the handle moves into
+// that zone. Character uses one to say "this gets harsher" and Decay another
+// to say "this is getting very long". Shared by the slider's painting
+// (OnyvaLookAndFeel) and its caption (CharacterSlider) so both ramp in
+// together.
+// ---------------------------------------------------------------------------
+
+enum class SliderCueKind { harshness, length };
+
+struct SliderCue
+{
+    float zoneStart;     // fraction of the slider's travel where the zone begins
+    float fullAt;        // fraction at which the cue reaches full strength
+    float tintMaxAlpha;  // track tint alpha at the far right end — a hint, not a full bar
+};
+
+inline SliderCue getSliderCue (SliderCueKind kind)
+{
+    // Decay's slider is heavily skewed (see Parameters.h), so these
+    // fractions of its travel are much further along in seconds: the cue
+    // starts around 14s and is at full strength by about 44s.
+    return kind == SliderCueKind::harshness ? SliderCue { 0.5f, 0.9f, 0.5f }
+                                            : SliderCue { 0.6f, 0.95f, 0.45f };
+}
+
+/** Warning amber for "harsher"; for "longer" the theme's own text colour —
+    near-white on dark themes, near-black on light ones — so it reads as a
+    pale, airy tint rather than another warning. */
+inline juce::Colour cueColour (SliderCueKind kind)
+{
+    return kind == SliderCueKind::harshness ? warnAmber : textPrimary;
+}
+
+/** 0 up to the start of the zone, ramping to 1 at `fullAt`. */
+inline float cueAmount (SliderCueKind kind, float sliderProportion)
+{
+    auto cue = getSliderCue (kind);
+    return juce::jlimit (0.0f, 1.0f, (sliderProportion - cue.zoneStart) / (cue.fullAt - cue.zoneStart));
+}
+
+/** How visible the track tint is: absent entirely at the slider's minimum,
+    fading in by the time it's 30% of the way along, so a slider left at 0
+    looks completely plain. */
+inline float cueTintVisibility (float sliderProportion)
+{
+    return juce::jlimit (0.0f, 1.0f, sliderProportion / 0.3f);
+}
+
 inline void applyPalette (const ThemePalette& p)
 {
     background = p.background; panel = p.panel; panelRaised = p.panelRaised; hairline = p.hairline;

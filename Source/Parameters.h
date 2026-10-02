@@ -68,8 +68,15 @@ inline juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout
         juce::AudioParameterFloatAttributes().withLabel ("Hz")));
 
     params.push_back (std::make_unique<juce::AudioParameterFloat> (
+        // 2224Hz was an outlier against every factory preset (which all
+        // use 8-20kHz) — it sits inside the feedback loop and compounds
+        // over every recirculation of the tail, so at that default the
+        // tail was actually dying out well short of the set Decay time
+        // for most program material (anything with energy above a few
+        // hundred Hz). 12kHz keeps the tail open enough to reach its set
+        // decay time while still rolling off the very top.
         juce::ParameterID { ParamIDs::highCut, 1 }, "High Cut",
-        Range { 200.0f, 20000.0f, 1.0f, 0.3f }, 2224.0f,
+        Range { 200.0f, 20000.0f, 1.0f, 0.3f }, 12000.0f,
         juce::AudioParameterFloatAttributes().withLabel ("Hz")));
 
     params.push_back (std::make_unique<juce::AudioParameterFloat> (

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "Theme.h"
 #include <functional>
@@ -223,7 +224,11 @@ public:
 
         if (slider.isHorizontal())
         {
-            drawCharacterSliderTrack (g, bounds, sliderPos, minSliderPos, maxSliderPos);
+            drawCharacterSliderTrack (g, bounds, sliderPos, minSliderPos, maxSliderPos,
+                                      slider.getProperties().contains ("sliderCue")
+                                          ? std::optional<Theme::SliderCueKind> (static_cast<Theme::SliderCueKind> ((int) slider.getProperties()["sliderCue"]))
+                                          : std::nullopt,
+                                      (float) slider.valueToProportionOfLength (slider.getValue()));
             return;
         }
 
@@ -380,8 +385,13 @@ private:
         g.drawRoundedRectangle (handle, handleH * 0.5f, 1.4f);
     }
 
+    /** `cue` / `valueProportion`: tints the upper stretch of the track toward the cue's colour
+        warning amber and carries the same tint onto the handle as it's
+        dragged into that zone — a visual "this gets harsher up here" hint
+        (the Character slider opts in; Decay doesn't). */
     void drawCharacterSliderTrack (juce::Graphics& g, juce::Rectangle<float> bounds,
-                                    float sliderPos, float minPos, float maxPos)
+                                    float sliderPos, float minPos, float maxPos,
+                                    std::optional<Theme::SliderCueKind> cue, float valueProportion)
     {
         auto trackHeight = 6.0f;
         auto track = bounds.withHeight (trackHeight).withCentre ({ bounds.getCentreX(), bounds.getCentreY() });
@@ -390,6 +400,30 @@ private:
                                     Theme::accent, track.getRight(), 0, false);
         g.setGradientFill (grad);
         g.fillRoundedRectangle (track, trackHeight * 0.5f);
+
+        auto handleColour = Theme::accent;
+        if (cue.has_value())
+        {
+            auto cueColour = Theme::cueColour (*cue);
+            auto tintAlpha = Theme::getSliderCue (*cue).tintMaxAlpha * Theme::cueTintVisibility (valueProportion);
+
+            if (tintAlpha > 0.0f)
+            {
+                auto zoneStart = track.getX() + track.getWidth() * Theme::getSliderCue (*cue).zoneStart;
+                juce::ColourGradient tint (cueColour.withAlpha (0.0f), zoneStart, 0,
+                                            cueColour.withAlpha (tintAlpha), track.getRight(), 0, false);
+                juce::Path trackShape;
+                trackShape.addRoundedRectangle (track, trackHeight * 0.5f);
+                g.saveState();
+                g.reduceClipRegion (trackShape);
+                g.setGradientFill (tint);
+                g.fillRect (track.withLeft (zoneStart));
+                g.restoreState();
+            }
+
+            handleColour = Theme::accent.interpolatedWith (cueColour, Theme::cueAmount (*cue, valueProportion));
+        }
+
         g.setColour (Theme::background.withAlpha (0.35f));
         g.fillRoundedRectangle (juce::Rectangle<float> (sliderPos, track.getY(), juce::jmax (0.0f, maxPos - sliderPos), trackHeight), trackHeight * 0.5f);
 
@@ -397,7 +431,7 @@ private:
         auto handleCentre = juce::Point<float> (sliderPos, bounds.getCentreY());
         auto handleBounds = juce::Rectangle<float> (handleR * 2.0f, handleR * 2.0f).withCentre (handleCentre);
 
-        g.setColour (Theme::accent.withAlpha (0.35f));
+        g.setColour (handleColour.withAlpha (0.35f));
         g.fillEllipse (juce::Rectangle<float> (handleR * 2.6f, handleR * 2.6f).withCentre (handleCentre));
 
         juce::ColourGradient handleGrad (Theme::panelRaised.brighter (0.18f), handleCentre.x, handleBounds.getY(),
@@ -406,7 +440,7 @@ private:
         g.fillEllipse (handleBounds);
         stampGrain (g, [&] (juce::Path& p) { p.addEllipse (handleBounds); }, handleBounds);
 
-        g.setColour (Theme::accent);
+        g.setColour (handleColour);
         g.drawEllipse (handleBounds, 1.6f);
 
         juce::ignoreUnused (minPos);
